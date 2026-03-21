@@ -46,7 +46,10 @@ export default async function VideoPage({ params }: Props) {
   if (!video || !video.publishedAt) notFound();
 
   const dbUser = userId
-    ? await prisma.user.findUnique({ where: { clerkId: userId } })
+    ? await prisma.user.findUnique({
+        where: { clerkId: userId },
+        include: { subscription: true },
+      })
     : null;
 
   const isSubscribed =

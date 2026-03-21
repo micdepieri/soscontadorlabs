@@ -54,7 +54,7 @@ export default function Nav() {
                 {user.firstName || user.username || "Perfil"}
               </Link>
             )}
-            <UserButton afterSignOutUrl="/" />
+            <UserButton />
             <button
               className="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100"
               onClick={() => setMenuOpen(!menuOpen)}

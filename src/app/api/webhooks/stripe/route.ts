@@ -39,14 +39,14 @@ export async function POST(req: Request) {
           stripeSubscriptionId: subscription.id,
           stripePriceId: subscription.items.data[0]?.price.id,
           status: "ACTIVE",
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
         },
         update: {
           stripeCustomerId: session.customer as string,
           stripeSubscriptionId: subscription.id,
           stripePriceId: subscription.items.data[0]?.price.id,
           status: "ACTIVE",
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
         },
       });
       break;
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
         where: { stripeSubscriptionId: subscription.id },
         data: {
           status,
-          currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
           stripePriceId: subscription.items.data[0]?.price.id,
         },
       });
@@ -78,9 +78,12 @@ export async function POST(req: Request) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      if (invoice.subscription) {
+      const subId = invoice.parent?.type === "subscription_details"
+        ? (invoice.parent.subscription_details?.subscription as string | undefined)
+        : undefined;
+      if (subId) {
         await prisma.subscription.updateMany({
-          where: { stripeSubscriptionId: invoice.subscription as string },
+          where: { stripeSubscriptionId: subId },
           data: { status: "PAST_DUE" },
         });
       }
