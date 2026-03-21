@@ -14,14 +14,28 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Portal da Comunidade",
+  title: {
+    default: "Portal da Comunidade",
+    template: "%s | Portal da Comunidade",
+  },
   description:
-    "Comunidade de contadores para compartilhar experiências com tecnologia e IA.",
+    "Comunidade de contadores que compartilham experiências práticas com IA — sem jargões, sem gurus.",
   openGraph: {
     title: "Portal da Comunidade",
     description:
-      "Comunidade de contadores para compartilhar experiências com tecnologia e IA.",
+      "Comunidade de contadores que compartilham experiências práticas com IA — sem jargões, sem gurus.",
     type: "website",
+    locale: "pt_BR",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Portal da Comunidade",
+    description:
+      "Comunidade de contadores que compartilham experiências práticas com IA — sem jargões, sem gurus.",
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 };
 
