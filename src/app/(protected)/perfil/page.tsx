@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -47,10 +48,10 @@ export default async function PerfilPage() {
   const subStatus = user.subscription?.status ?? "INACTIVE";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8">
       {/* Profile card */}
-      <div className="bg-white rounded-xl border border-gray-200 p-8">
-        <div className="flex items-center gap-6 mb-6">
+      <div className="rounded-xl border border-gray-200 bg-white p-8">
+        <div className="mb-6 flex items-center gap-6">
           {user.avatarUrl ? (
             <Image
               src={user.avatarUrl}
@@ -60,7 +61,7 @@ export default async function PerfilPage() {
               className="rounded-full"
             />
           ) : (
-            <div className="w-20 h-20 rounded-full bg-indigo-100 flex items-center justify-center text-2xl font-bold text-indigo-600">
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-indigo-100 text-2xl font-bold text-indigo-600">
               {(user.name || user.email).charAt(0).toUpperCase()}
             </div>
           )}
@@ -75,9 +76,7 @@ export default async function PerfilPage() {
           </div>
         </div>
 
-        {user.bio && (
-          <p className="text-gray-700 border-t border-gray-100 pt-4">{user.bio}</p>
-        )}
+        {user.bio && <p className="border-t border-gray-100 pt-4 text-gray-700">{user.bio}</p>}
 
         <div className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-500">
           Membro desde{" "}
@@ -88,8 +87,8 @@ export default async function PerfilPage() {
       </div>
 
       {/* Subscription status */}
-      <div className="bg-white rounded-xl border border-gray-200 p-8">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Assinatura</h2>
+      <div className="rounded-xl border border-gray-200 bg-white p-8">
+        <h2 className="mb-4 text-lg font-semibold text-gray-900">Assinatura</h2>
         <div className="flex items-center justify-between">
           <div>
             <span
@@ -106,33 +105,42 @@ export default async function PerfilPage() {
               </p>
             )}
           </div>
-          <a
+          <Link
             href="/assinatura"
-            className="rounded-lg border border-indigo-600 px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 transition-colors"
+            className="rounded-lg border border-indigo-600 px-4 py-2 text-sm text-indigo-600 transition-colors hover:bg-indigo-50"
           >
             Gerenciar
-          </a>
+          </Link>
         </div>
       </div>
 
       {/* Recent comments */}
       {user.comments.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Comentários recentes</h2>
+        <div className="rounded-xl border border-gray-200 bg-white p-8">
+          <h2 className="mb-4 text-lg font-semibold text-gray-900">Comentários recentes</h2>
           <div className="space-y-4">
             {user.comments.map((comment) => (
-              <div key={comment.id} className="border-b border-gray-100 last:border-0 pb-4 last:pb-0">
-                <p className="text-sm text-gray-700 line-clamp-2">{comment.content}</p>
+              <div
+                key={comment.id}
+                className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
+              >
+                <p className="line-clamp-2 text-sm text-gray-700">{comment.content}</p>
                 <p className="mt-1 text-xs text-gray-400">
                   Em{" "}
                   {comment.video ? (
-                    <a href={`/videos/${comment.video.id}`} className="text-indigo-600 hover:underline">
+                    <Link
+                      href={`/videos/${comment.video.id}`}
+                      className="text-indigo-600 hover:underline"
+                    >
                       {comment.video.title}
-                    </a>
+                    </Link>
                   ) : comment.material ? (
-                    <a href={`/materiais/${comment.material.id}`} className="text-indigo-600 hover:underline">
+                    <Link
+                      href={`/materiais/${comment.material.id}`}
+                      className="text-indigo-600 hover:underline"
+                    >
                       {comment.material.title}
-                    </a>
+                    </Link>
                   ) : (
                     "conteúdo removido"
                   )}

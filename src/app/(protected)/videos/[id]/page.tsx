@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import type { Metadata } from "next";
+import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import VideoEmbed from "@/components/video-embed";
 
@@ -52,32 +53,37 @@ export default async function VideoPage({ params }: Props) {
       })
     : null;
 
-  const isSubscribed =
-    dbUser?.subscription?.status === "ACTIVE" ||
-    dbUser?.role === "ADMIN";
+  const isSubscribed = dbUser?.subscription?.status === "ACTIVE" || dbUser?.role === "ADMIN";
 
   if (video.isPremium && !isSubscribed) {
     return (
-      <div className="max-w-2xl mx-auto text-center py-20">
+      <div className="mx-auto max-w-2xl py-20 text-center">
         <div className="mb-6 text-amber-500">
-          <svg className="w-16 h-16 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
           </svg>
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">{video.title}</h1>
-        <p className="text-gray-600 mb-8">Este vídeo está disponível apenas para membros premium.</p>
-        <a
+        <h1 className="mb-2 text-2xl font-bold text-gray-900">{video.title}</h1>
+        <p className="mb-8 text-gray-600">
+          Este vídeo está disponível apenas para membros premium.
+        </p>
+        <Link
           href="/assinatura"
-          className="inline-block rounded-lg bg-indigo-600 px-8 py-3 text-white font-medium hover:bg-indigo-700 transition-colors"
+          className="inline-block rounded-lg bg-indigo-600 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
         >
           Assinar agora
-        </a>
+        </Link>
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
+    <div className="mx-auto max-w-4xl">
       {/* Video */}
       <VideoEmbed url={video.url} title={video.title} />
 
@@ -87,7 +93,7 @@ export default async function VideoPage({ params }: Props) {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{video.title}</h1>
             {video.category && (
-              <span className="mt-1 inline-block text-sm text-indigo-600 font-medium">
+              <span className="mt-1 inline-block text-sm font-medium text-indigo-600">
                 {video.category.name}
               </span>
             )}
@@ -99,7 +105,7 @@ export default async function VideoPage({ params }: Props) {
           )}
         </div>
         {video.description && (
-          <p className="mt-4 text-gray-700 leading-relaxed">{video.description}</p>
+          <p className="mt-4 leading-relaxed text-gray-700">{video.description}</p>
         )}
         {video.tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-2">

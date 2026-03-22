@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 interface CommentLike {
   id: string;
@@ -57,9 +58,7 @@ function CommentItem({
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isPending, startTransition] = useTransition();
-  const likedByMe = currentUserId
-    ? comment.likes.some((l) => l.userId === currentUserId)
-    : false;
+  const likedByMe = currentUserId ? comment.likes.some((l) => l.userId === currentUserId) : false;
 
   async function handleLike() {
     if (!currentUserId) return;
@@ -88,7 +87,7 @@ function CommentItem({
   }
 
   return (
-    <div className={`flex gap-3 ${depth > 0 ? "ml-8 mt-3" : ""}`}>
+    <div className={`flex gap-3 ${depth > 0 ? "mt-3 ml-8" : ""}`}>
       <div className="shrink-0">
         {comment.author.avatarUrl ? (
           <Image
@@ -99,17 +98,15 @@ function CommentItem({
             className="rounded-full"
           />
         ) : (
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-xs font-semibold text-indigo-600">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
             {(comment.author.name || "U").charAt(0).toUpperCase()}
           </div>
         )}
       </div>
-      <div className="flex-1 min-w-0">
-        <div className="bg-gray-50 rounded-xl px-4 py-3">
-          <p className="text-sm font-semibold text-gray-900">
-            {comment.author.name || "Usuário"}
-          </p>
-          <p className="text-sm text-gray-700 mt-1 whitespace-pre-wrap break-words">
+      <div className="min-w-0 flex-1">
+        <div className="rounded-xl bg-gray-50 px-4 py-3">
+          <p className="text-sm font-semibold text-gray-900">{comment.author.name || "Usuário"}</p>
+          <p className="mt-1 text-sm break-words whitespace-pre-wrap text-gray-700">
             {comment.content}
           </p>
         </div>
@@ -118,20 +115,28 @@ function CommentItem({
             onClick={handleLike}
             disabled={!currentUserId}
             className={`flex items-center gap-1 text-xs transition-colors ${
-              likedByMe
-                ? "text-indigo-600 font-medium"
-                : "text-gray-500 hover:text-indigo-600"
+              likedByMe ? "font-medium text-indigo-600" : "text-gray-500 hover:text-indigo-600"
             } disabled:opacity-40`}
           >
-            <svg className="w-3.5 h-3.5" fill={likedByMe ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            <svg
+              className="h-3.5 w-3.5"
+              fill={likedByMe ? "currentColor" : "none"}
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+              />
             </svg>
             {comment.likes.length > 0 && comment.likes.length}
           </button>
           {currentUserId && depth === 0 && (
             <button
               onClick={() => setReplying(!replying)}
-              className="text-xs text-gray-500 hover:text-indigo-600 transition-colors"
+              className="text-xs text-gray-500 transition-colors hover:text-indigo-600"
             >
               Responder
             </button>
@@ -146,20 +151,20 @@ function CommentItem({
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Escreva uma resposta..."
-              className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="flex-1 rounded-lg border border-gray-300 px-3 py-1.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               autoFocus
             />
             <button
               type="submit"
               disabled={isPending || !replyText.trim()}
-              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              className="rounded-lg bg-indigo-600 px-4 py-1.5 text-xs text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
             >
               {isPending ? "..." : "Enviar"}
             </button>
             <button
               type="button"
               onClick={() => setReplying(false)}
-              className="rounded-lg px-3 py-1.5 text-xs text-gray-600 hover:bg-gray-100 transition-colors"
+              className="rounded-lg px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-100"
             >
               Cancelar
             </button>
@@ -198,9 +203,7 @@ export default function CommentsSection({
   const [isPending, startTransition] = useTransition();
 
   async function refreshComments() {
-    const res = await fetch(
-      `/api/comments?contentId=${contentId}&contentType=${contentType}`
-    );
+    const res = await fetch(`/api/comments?contentId=${contentId}&contentType=${contentType}`);
     if (res.ok) {
       const data = await res.json();
       setComments(data);
@@ -227,9 +230,7 @@ export default function CommentsSection({
 
   return (
     <div>
-      <h2 className="text-lg font-semibold text-gray-900 mb-6">
-        Comentários ({comments.length})
-      </h2>
+      <h2 className="mb-6 text-lg font-semibold text-gray-900">Comentários ({comments.length})</h2>
 
       {currentUserClerkId ? (
         <form onSubmit={handleSubmit} className="mb-8 flex gap-3">
@@ -238,26 +239,27 @@ export default function CommentsSection({
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Compartilhe sua experiência ou dúvida..."
             rows={3}
-            className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+            className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
           />
           <button
             type="submit"
             disabled={isPending || !newComment.trim()}
-            className="self-end rounded-xl bg-indigo-600 px-6 py-3 text-sm text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+            className="self-end rounded-xl bg-indigo-600 px-6 py-3 text-sm text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
           >
             {isPending ? "Enviando..." : "Comentar"}
           </button>
         </form>
       ) : (
         <p className="mb-8 text-sm text-gray-500">
-          <a href="/sign-in" className="text-indigo-600 hover:underline">Faça login</a> para comentar.
+          <Link href="/sign-in" className="text-indigo-600 hover:underline">
+            Faça login
+          </Link>{" "}
+          para comentar.
         </p>
       )}
 
       {comments.length === 0 ? (
-        <p className="text-center py-12 text-gray-500 text-sm">
-          Seja o primeiro a comentar!
-        </p>
+        <p className="py-12 text-center text-sm text-gray-500">Seja o primeiro a comentar!</p>
       ) : (
         <div className="space-y-6">
           {comments.map((comment) => (
