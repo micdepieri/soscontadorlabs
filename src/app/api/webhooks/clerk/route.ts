@@ -37,8 +37,7 @@ export async function POST(req: Request) {
 
   switch (event.type) {
     case "user.created": {
-      const { id, email_addresses, first_name, last_name, image_url } =
-        event.data;
+      const { id, email_addresses, first_name, last_name, image_url } = event.data;
       const primaryEmail = email_addresses.find(
         (e) => e.id === event.data.primary_email_address_id
       );
@@ -57,8 +56,7 @@ export async function POST(req: Request) {
     }
 
     case "user.updated": {
-      const { id, email_addresses, first_name, last_name, image_url } =
-        event.data;
+      const { id, email_addresses, first_name, last_name, image_url } = event.data;
       const primaryEmail = email_addresses.find(
         (e) => e.id === event.data.primary_email_address_id
       );

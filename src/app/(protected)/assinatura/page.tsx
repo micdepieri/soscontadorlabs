@@ -26,21 +26,24 @@ export default async function AssinaturaPage() {
   const isCancelled = sub?.status === "CANCELLED";
 
   return (
-    <div className="max-w-2xl mx-auto space-y-8">
+    <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Assinatura</h1>
-        <p className="mt-2 text-gray-600">
-          Acesse todo o conteúdo premium da comunidade.
-        </p>
+        <p className="mt-2 text-gray-600">Acesse todo o conteúdo premium da comunidade.</p>
       </div>
 
       {isActive ? (
         /* Active subscription */
-        <div className="bg-white rounded-xl border border-green-200 p-8">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        <div className="rounded-xl border border-green-200 bg-white p-8">
+          <div className="mb-4 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 text-green-600">
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             </div>
             <div>
@@ -59,20 +62,44 @@ export default async function AssinaturaPage() {
           </div>
           <ul className="mb-6 space-y-2 text-sm text-gray-700">
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <svg
+                className="h-4 w-4 shrink-0 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               Acesso a todos os vídeos premium
             </li>
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <svg
+                className="h-4 w-4 shrink-0 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               Acesso a todos os materiais premium
             </li>
             <li className="flex items-center gap-2">
-              <svg className="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              <svg
+                className="h-4 w-4 shrink-0 text-green-500"
+                fill="currentColor"
+                viewBox="0 0 20 20"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                  clipRule="evenodd"
+                />
               </svg>
               Participação na comunidade
             </li>
@@ -81,17 +108,22 @@ export default async function AssinaturaPage() {
         </div>
       ) : (
         /* No active subscription */
-        <div className="bg-white rounded-xl border border-gray-200 p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600 mx-auto mb-4">
-              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+        <div className="rounded-xl border border-gray-200 bg-white p-8">
+          <div className="mb-8 text-center">
+            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+              <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                />
               </svg>
             </div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
+            <h2 className="mb-2 text-xl font-bold text-gray-900">
               {isCancelled ? "Assinatura cancelada" : "Acesse o conteúdo premium"}
             </h2>
-            <p className="text-gray-600 max-w-md mx-auto">
+            <p className="mx-auto max-w-md text-gray-600">
               {isCancelled
                 ? "Sua assinatura foi cancelada. Reative para continuar acessando o conteúdo premium."
                 : "Desbloqueie todos os vídeos e materiais exclusivos sobre IA para contadores."}
@@ -99,13 +131,13 @@ export default async function AssinaturaPage() {
           </div>
 
           {/* Pricing */}
-          <div className="rounded-xl border-2 border-indigo-600 p-6 mb-6">
-            <div className="flex items-baseline gap-1 mb-1">
+          <div className="mb-6 rounded-xl border-2 border-indigo-600 p-6">
+            <div className="mb-1 flex items-baseline gap-1">
               <span className="text-3xl font-bold text-gray-900">R$ 49</span>
               <span className="text-gray-500">/mês</span>
             </div>
-            <p className="text-sm text-gray-600 mb-6">Cancele quando quiser.</p>
-            <ul className="space-y-3 mb-6 text-sm text-gray-700">
+            <p className="mb-6 text-sm text-gray-600">Cancele quando quiser.</p>
+            <ul className="mb-6 space-y-3 text-sm text-gray-700">
               {[
                 "Todos os vídeos premium",
                 "PDFs e materiais exclusivos",
@@ -113,8 +145,16 @@ export default async function AssinaturaPage() {
                 "Atualizações constantes",
               ].map((item) => (
                 <li key={item} className="flex items-center gap-2">
-                  <svg className="w-4 h-4 text-indigo-500 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  <svg
+                    className="h-4 w-4 shrink-0 text-indigo-500"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
                   </svg>
                   {item}
                 </li>

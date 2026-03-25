@@ -27,9 +27,7 @@ export async function POST(req: Request) {
       const userId = session.metadata?.userId;
       if (!userId || !session.subscription || !session.customer) break;
 
-      const subscription = await stripe.subscriptions.retrieve(
-        session.subscription as string
-      );
+      const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
 
       await prisma.subscription.upsert({
         where: { userId },
@@ -78,9 +76,10 @@ export async function POST(req: Request) {
 
     case "invoice.payment_failed": {
       const invoice = event.data.object as Stripe.Invoice;
-      const subId = invoice.parent?.type === "subscription_details"
-        ? (invoice.parent.subscription_details?.subscription as string | undefined)
-        : undefined;
+      const subId =
+        invoice.parent?.type === "subscription_details"
+          ? (invoice.parent.subscription_details?.subscription as string | undefined)
+          : undefined;
       if (subId) {
         await prisma.subscription.updateMany({
           where: { stripeSubscriptionId: subId },

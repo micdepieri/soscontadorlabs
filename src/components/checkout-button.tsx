@@ -22,7 +22,7 @@ export default function CheckoutButton() {
     <button
       onClick={handleCheckout}
       disabled={loading}
-      className="w-full rounded-lg bg-indigo-600 px-6 py-3 text-white font-medium hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+      className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
     >
       {loading ? "Redirecionando..." : "Assinar agora"}
     </button>

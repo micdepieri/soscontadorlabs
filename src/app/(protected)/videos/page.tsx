@@ -45,18 +45,18 @@ export default async function VideosPage({
       </div>
 
       {/* Search + Filter */}
-      <form className="mb-8 flex flex-col sm:flex-row gap-3">
+      <form className="mb-8 flex flex-col gap-3 sm:flex-row">
         <input
           type="search"
           name="q"
           defaultValue={q}
           placeholder="Buscar vídeos..."
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         />
         <select
           name="categoria"
           defaultValue={categoria || ""}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
@@ -67,7 +67,7 @@ export default async function VideosPage({
         </select>
         <button
           type="submit"
-          className="rounded-lg bg-indigo-600 px-6 py-2 text-sm text-white hover:bg-indigo-700 transition-colors"
+          className="rounded-lg bg-indigo-600 px-6 py-2 text-sm text-white transition-colors hover:bg-indigo-700"
         >
           Buscar
         </button>
@@ -75,7 +75,7 @@ export default async function VideosPage({
 
       {/* Category pills */}
       {categories.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-8">
+        <div className="mb-8 flex flex-wrap gap-2">
           <Link
             href="/videos"
             className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
@@ -104,40 +104,58 @@ export default async function VideosPage({
 
       {/* Video grid */}
       {videos.length === 0 ? (
-        <div className="text-center py-20 text-gray-500">
+        <div className="py-20 text-center text-gray-500">
           <p className="text-lg">Nenhum vídeo encontrado.</p>
           {(q || categoria) && (
-            <Link href="/videos" className="mt-4 inline-block text-indigo-600 hover:underline text-sm">
+            <Link
+              href="/videos"
+              className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+            >
               Limpar filtros
             </Link>
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {videos.map((video) => (
             <Link
               key={video.id}
               href={`/videos/${video.id}`}
-              className="group rounded-xl border border-gray-200 overflow-hidden hover:border-indigo-300 hover:shadow-md transition-all bg-white"
+              className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all hover:border-indigo-300 hover:shadow-md"
             >
               {video.thumbnail ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={video.thumbnail}
                   alt={video.title}
-                  className="w-full aspect-video object-cover group-hover:opacity-90 transition-opacity"
+                  className="aspect-video w-full object-cover transition-opacity group-hover:opacity-90"
                 />
               ) : (
-                <div className="w-full aspect-video bg-gradient-to-br from-indigo-100 to-purple-100 flex items-center justify-center">
-                  <svg className="w-12 h-12 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                <div className="flex aspect-video w-full items-center justify-center bg-gradient-to-br from-indigo-100 to-purple-100">
+                  <svg
+                    className="h-12 w-12 text-indigo-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
                   </svg>
                 </div>
               )}
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-2">
+                  <h2 className="line-clamp-2 font-semibold text-gray-900 transition-colors group-hover:text-indigo-600">
                     {video.title}
                   </h2>
                   {video.isPremium && (
@@ -147,10 +165,10 @@ export default async function VideosPage({
                   )}
                 </div>
                 {video.description && (
-                  <p className="mt-1 text-sm text-gray-500 line-clamp-2">{video.description}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">{video.description}</p>
                 )}
                 {video.category && (
-                  <span className="mt-2 inline-block text-xs text-indigo-600 font-medium">
+                  <span className="mt-2 inline-block text-xs font-medium text-indigo-600">
                     {video.category.name}
                   </span>
                 )}

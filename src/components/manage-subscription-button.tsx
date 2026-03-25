@@ -22,7 +22,7 @@ export default function ManageSubscriptionButton() {
     <button
       onClick={handlePortal}
       disabled={loading}
-      className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60 transition-colors"
+      className="rounded-lg border border-gray-300 px-6 py-2.5 text-sm text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
     >
       {loading ? "Carregando..." : "Gerenciar assinatura no Stripe"}
     </button>
