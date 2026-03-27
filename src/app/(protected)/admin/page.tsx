@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import AdminTabs from "@/components/admin-tabs";
 
 export const metadata: Metadata = {
-  title: "Admin | Portal da Comunidade",
+  title: "Administração | Portal da Comunidade",
 };
 
 export default async function AdminPage() {
