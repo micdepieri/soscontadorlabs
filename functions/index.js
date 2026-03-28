@@ -1,5 +1,5 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { default: next } = require("next");
+const next = require("next");
 const path = require("path");
 
 const nextApp = next({
