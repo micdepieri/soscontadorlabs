@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   createUserWithEmailAndPassword,
@@ -18,6 +18,28 @@ export default function SignUpPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md animate-pulse rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="mb-4 h-8 w-32 rounded bg-gray-200" />
+          <div className="mb-8 h-4 w-48 rounded bg-gray-100" />
+          <div className="space-y-4">
+            <div className="h-10 rounded bg-gray-100" />
+            <div className="h-10 rounded bg-gray-100" />
+            <div className="h-10 rounded bg-gray-100" />
+            <div className="h-12 rounded bg-gray-200" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   async function createSession(user: { getIdToken: () => Promise<string> }) {
     const idToken = await user.getIdToken();

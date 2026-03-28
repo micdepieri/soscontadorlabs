@@ -1,26 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import Link from "next/link";
 
-export default function SignInPage() {
+function SignInContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+        <div className="w-full max-w-md animate-pulse rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+          <div className="mb-4 h-8 w-32 rounded bg-gray-200" />
+          <div className="mb-8 h-4 w-48 rounded bg-gray-100" />
+          <div className="space-y-4">
+            <div className="h-10 rounded bg-gray-100" />
+            <div className="h-10 rounded bg-gray-100" />
+            <div className="h-12 rounded bg-gray-200" />
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   async function createSession(user: { getIdToken: () => Promise<string> }) {
     const idToken = await user.getIdToken();
-    await fetch("/api/auth/session", {
+    const res = await fetch("/api/auth/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ idToken }),
     });
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.details || "Não foi possível criar a sessão no servidor.");
+    }
   }
 
   async function handleEmailSignIn(e: React.FormEvent) {
@@ -30,7 +55,8 @@ export default function SignInPage() {
     try {
       const result = await signInWithEmailAndPassword(auth, email, password);
       await createSession(result.user);
-      await fetch("/api/auth/sync-user", {
+      
+      const syncRes = await fetch("/api/auth/sync-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -40,10 +66,15 @@ export default function SignInPage() {
           photoURL: result.user.photoURL,
         }),
       });
+      
+      if (!syncRes.ok) {
+        throw new Error("Erro ao sincronizar dados do usuário.");
+      }
+
       const redirect = searchParams.get("redirect") || "/videos";
       router.push(redirect);
-    } catch {
-      setError("Email ou senha incorretos.");
+    } catch (err: any) {
+      setError(err.message || "Email ou senha incorretos.");
     } finally {
       setLoading(false);
     }
@@ -56,7 +87,8 @@ export default function SignInPage() {
       const provider = new GoogleAuthProvider();
       const result = await signInWithPopup(auth, provider);
       await createSession(result.user);
-      await fetch("/api/auth/sync-user", {
+      
+      const syncRes = await fetch("/api/auth/sync-user", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -66,10 +98,15 @@ export default function SignInPage() {
           photoURL: result.user.photoURL,
         }),
       });
+
+      if (!syncRes.ok) {
+        throw new Error("Erro ao sincronizar dados do Google.");
+      }
+
       const redirect = searchParams.get("redirect") || "/videos";
       router.push(redirect);
-    } catch {
-      setError("Erro ao entrar com Google.");
+    } catch (err: any) {
+      setError(err.message || "Erro ao entrar com Google.");
     } finally {
       setLoading(false);
     }
@@ -86,7 +123,7 @@ export default function SignInPage() {
         )}
 
         <form onSubmit={handleEmailSignIn} className="space-y-4">
-          <div>
+          <div suppressHydrationWarning>
             <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
             <input
               type="email"
@@ -95,6 +132,7 @@ export default function SignInPage() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-gray-300 px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
               placeholder="seu@email.com"
+              suppressHydrationWarning
             />
           </div>
           <div>
@@ -157,5 +195,13 @@ export default function SignInPage() {
         </p>
       </div>
     </main>
+  );
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center">Carregando...</div>}>
+      <SignInContent />
+    </Suspense>
   );
 }

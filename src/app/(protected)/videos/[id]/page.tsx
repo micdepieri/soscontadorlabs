@@ -6,11 +6,14 @@ import {
   getSubscription,
   getComments,
   getCategories,
+  getContentRatingStats,
+  getUserRating,
 } from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import VideoEmbed from "@/components/video-embed";
+import Thermometer from "@/components/thermometer";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -30,7 +33,13 @@ export default async function VideoPage({ params }: Props) {
   const { id } = await params;
   const { userId } = await getServerAuth();
 
-  const video = await getVideoById(id);
+  const [video, categories, ratingStats, userRating] = await Promise.all([
+    getVideoById(id),
+    getCategories(),
+    getContentRatingStats(id),
+    userId ? getUserRating(userId, id) : null,
+  ]);
+
   if (!video || !video.publishedAt) notFound();
 
   const dbUser = userId ? await getUserByUid(userId) : null;
@@ -64,7 +73,6 @@ export default async function VideoPage({ params }: Props) {
     );
   }
 
-  const categories = await getCategories();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
   const category = video.categoryId ? categoryMap[video.categoryId] || null : null;
   const comments = await getComments(id, "video");
@@ -103,6 +111,15 @@ export default async function VideoPage({ params }: Props) {
             ))}
           </div>
         )}
+
+        <div className="mt-12">
+          <Thermometer 
+            contentId={video.id} 
+            contentType="video" 
+            initialRating={userRating} 
+            stats={ratingStats} 
+          />
+        </div>
       </div>
 
       {/* Comments */}

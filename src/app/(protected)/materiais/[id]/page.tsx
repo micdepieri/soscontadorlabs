@@ -6,10 +6,13 @@ import {
   getSubscription,
   getComments,
   getCategories,
+  getContentRatingStats,
+  getUserRating,
 } from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
+import Thermometer from "@/components/thermometer";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -35,7 +38,13 @@ export default async function MaterialPage({ params }: Props) {
   const { id } = await params;
   const { userId } = await getServerAuth();
 
-  const material = await getMaterialById(id);
+  const [material, categories, ratingStats, userRating] = await Promise.all([
+    getMaterialById(id),
+    getCategories(),
+    getContentRatingStats(id),
+    userId ? getUserRating(userId, id) : null,
+  ]);
+
   if (!material || !material.publishedAt) notFound();
 
   const dbUser = userId ? await getUserByUid(userId) : null;
@@ -69,7 +78,6 @@ export default async function MaterialPage({ params }: Props) {
     );
   }
 
-  const categories = await getCategories();
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
   const category = material.categoryId ? categoryMap[material.categoryId] || null : null;
   const comments = await getComments(id, "material");
@@ -126,6 +134,15 @@ export default async function MaterialPage({ params }: Props) {
             />
           </svg>
         </a>
+      </div>
+
+      <div className="mt-8">
+        <Thermometer 
+          contentId={material.id} 
+          contentType="material" 
+          initialRating={userRating} 
+          stats={ratingStats} 
+        />
       </div>
 
       {/* Comments */}

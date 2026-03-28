@@ -1,8 +1,15 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, type User } from "firebase/auth";
-import { auth } from "@/lib/firebase";
+import { onAuthStateChanged, type User as FirebaseUser } from "firebase/auth";
+import { doc, onSnapshot } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
+
+export interface User extends FirebaseUser {
+  role?: "MEMBER" | "ADMIN";
+  name?: string;
+  avatarUrl?: string;
+}
 
 interface AuthContextValue {
   user: User | null;
@@ -17,8 +24,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+      if (firebaseUser) {
+        // Listen to Firestore document for role and additional data
+        const userRef = doc(db, "users", firebaseUser.uid);
+        const unsubDoc = onSnapshot(userRef, (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            setUser({
+              ...firebaseUser,
+              role: data.role,
+              name: data.name,
+              avatarUrl: data.avatarUrl,
+            });
+          } else {
+            setUser(firebaseUser as User);
+          }
+          setLoading(false);
+        });
+        return () => unsubDoc();
+      } else {
+        setUser(null);
+        setLoading(false);
+      }
     });
     return () => unsubscribe();
   }, []);

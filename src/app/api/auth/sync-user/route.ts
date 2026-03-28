@@ -16,20 +16,23 @@ export async function POST(req: NextRequest) {
     const userDoc = await userRef.get();
 
     if (!userDoc.exists) {
+      const isAdmin = email === "michael@mappisc.com.br";
       await userRef.set({
         uid,
         email,
         name: displayName || null,
         avatarUrl: photoURL || null,
-        role: "MEMBER",
+        role: isAdmin ? "ADMIN" : "MEMBER",
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
     } else {
+      const isAdmin = email === "michael@mappisc.com.br";
       await userRef.update({
         email,
         name: displayName || null,
         avatarUrl: photoURL || null,
+        role: isAdmin ? "ADMIN" : "MEMBER", // Force admin for this email even if it existed as member
         updatedAt: new Date().toISOString(),
       });
     }

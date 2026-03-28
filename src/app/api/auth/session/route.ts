@@ -26,8 +26,12 @@ export async function POST(req: NextRequest) {
     });
 
     return response;
-  } catch {
-    return NextResponse.json({ error: "Failed to create session" }, { status: 401 });
+  } catch (err: any) {
+    console.error("Session creation error:", err.message || err);
+    return NextResponse.json(
+      { error: "Failed to create session", details: err.message },
+      { status: 401 }
+    );
   }
 }
 

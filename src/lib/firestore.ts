@@ -7,8 +7,42 @@ export interface FirestoreUser {
   name: string | null;
   avatarUrl: string | null;
   role: "MEMBER" | "ADMIN";
+  bio: string | null;
+  city: string | null;
+  state: string | null;
+  skills: string[];
+  linkedin: string | null;
+  instagram: string | null;
+  phone: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export async function updateUserProfile(
+  uid: string,
+  data: {
+    name?: string | null;
+    avatarUrl?: string | null;
+    bio?: string | null;
+    city?: string | null;
+    state?: string | null;
+    skills?: string[];
+    linkedin?: string | null;
+    instagram?: string | null;
+    phone?: string | null;
+  }
+) {
+  const db = getAdminFirestore();
+  await db
+    .collection("users")
+    .doc(uid)
+    .update({ ...data, updatedAt: new Date().toISOString() });
+}
+
+export async function getUsers(): Promise<FirestoreUser[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("users").orderBy("createdAt", "desc").get();
+  return snapshot.docs.map((doc) => ({ uid: doc.id, ...doc.data() }) as FirestoreUser);
 }
 
 export async function getUserByUid(uid: string): Promise<FirestoreUser | null> {
@@ -16,6 +50,22 @@ export async function getUserByUid(uid: string): Promise<FirestoreUser | null> {
   const doc = await db.collection("users").doc(uid).get();
   if (!doc.exists) return null;
   return { uid: doc.id, ...doc.data() } as FirestoreUser;
+}
+
+export async function searchUsers(q: string): Promise<FirestoreUser[]> {
+  const db = getAdminFirestore();
+  const query = q.toLowerCase();
+  
+  // For simplicity and to avoid complex indices now, we fetch all and filter 
+  // (In production with many users, we'd use Algolia or specialized Firestore query)
+  const snapshot = await db.collection("users").get();
+  return snapshot.docs
+    .map(doc => ({ uid: doc.id, ...doc.data() } as FirestoreUser))
+    .filter(u => 
+      u.name?.toLowerCase().includes(query) || 
+      u.email?.toLowerCase().includes(query)
+    )
+    .slice(0, 10);
 }
 
 export async function upsertUser(data: Partial<FirestoreUser> & { uid: string; email: string }) {
@@ -102,6 +152,17 @@ export async function deleteVideo(id: string) {
   await db.collection("videos").doc(id).delete();
 }
 
+export async function updateVideo(id: string, data: Partial<FirestoreVideo>) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, createdAt: __, ...updateData } = data;
+  await db
+    .collection("videos")
+    .doc(id)
+    .update({ ...updateData, updatedAt: now });
+}
+
 // Material helpers
 export interface FirestoreMaterial {
   id: string;
@@ -170,6 +231,17 @@ export async function deleteMaterial(id: string) {
   await db.collection("materials").doc(id).delete();
 }
 
+export async function updateMaterial(id: string, data: Partial<FirestoreMaterial>) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, createdAt: __, ...updateData } = data;
+  await db
+    .collection("materials")
+    .doc(id)
+    .update({ ...updateData, updatedAt: now });
+}
+
 // Category helpers
 export interface FirestoreCategory {
   id: string;
@@ -197,6 +269,13 @@ export async function deleteCategory(id: string) {
   await db.collection("categories").doc(id).delete();
 }
 
+export async function updateCategory(id: string, data: Partial<FirestoreCategory>) {
+  const db = getAdminFirestore();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, createdAt: __, ...updateData } = data;
+  await db.collection("categories").doc(id).update(updateData);
+}
+
 // Comment helpers
 export interface FirestoreComment {
   id: string;
@@ -207,6 +286,7 @@ export interface FirestoreComment {
   videoId: string | null;
   materialId: string | null;
   parentId: string | null;
+  imageUrl?: string | null; // Added field for image attachments
   isHidden: boolean;
   likes: string[]; // array of user UIDs who liked
   createdAt: string;
@@ -215,32 +295,48 @@ export interface FirestoreComment {
 
 export async function getComments(
   contentId: string,
-  contentType: "video" | "material"
+  contentType: "video" | "material" | "post"
 ): Promise<FirestoreComment[]> {
   const db = getAdminFirestore();
-  const field = contentType === "video" ? "videoId" : "materialId";
-  const snapshot = await db
-    .collection("comments")
-    .where(field, "==", contentId)
-    .where("isHidden", "==", false)
-    .orderBy("createdAt", "desc")
-    .get();
+  const fieldMapping = {
+    video: "videoId",
+    material: "materialId",
+    post: "postId",
+  };
+  const field = fieldMapping[contentType];
+  try {
+    const snapshot = await db
+      .collection("comments")
+      .where(field, "==", contentId)
+      .where("isHidden", "==", false)
+      .orderBy("createdAt", "desc")
+      .get();
 
-  const allComments = snapshot.docs.map(
-    (doc) => ({ id: doc.id, ...doc.data() }) as FirestoreComment
-  );
+    const allComments = snapshot.docs.map(
+      (doc) => ({ id: doc.id, ...doc.data() }) as FirestoreComment
+    );
 
-  // Separate top-level and replies
-  const topLevel = allComments.filter((c) => !c.parentId);
-  const replies = allComments.filter((c) => c.parentId);
+    // Separate top-level and replies
+    const topLevel = allComments.filter((c) => !c.parentId);
+    const replies = allComments.filter((c) => c.parentId);
 
-  // Attach replies to parents
-  return topLevel.map((comment) => ({
-    ...comment,
-    replies: replies
-      .filter((r) => r.parentId === comment.id)
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
-  }));
+    // Attach replies to parents
+    return topLevel.map((comment) => ({
+      ...comment,
+      replies: replies
+        .filter((r) => r.parentId === comment.id)
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
+    }));
+  } catch (error: any) {
+    if (error.message?.includes("requires an index")) {
+      console.warn(
+        "⚠️ Firestore Index required for comments. Please create it using the link in the console."
+      );
+    } else {
+      console.error("Error fetching comments:", error);
+    }
+    return [];
+  }
 }
 
 export async function createComment(
@@ -276,6 +372,48 @@ export async function toggleCommentLike(commentId: string, uid: string): Promise
     await ref.update({ likes: [...likes, uid] });
     return true;
   }
+}
+
+// Content Request helpers
+export interface FirestoreContentRequest {
+  id: string;
+  userId: string;
+  userName: string | null;
+  topic: string;
+  userMessage: string;
+  status: "PENDING" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getContentRequests(): Promise<FirestoreContentRequest[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("content_requests").orderBy("createdAt", "desc").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FirestoreContentRequest);
+}
+
+export async function createContentRequest(
+  data: Omit<FirestoreContentRequest, "id" | "createdAt" | "updatedAt" | "status">
+) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  const ref = await db
+    .collection("content_requests")
+    .add({ ...data, status: "PENDING", createdAt: now, updatedAt: now });
+  return { id: ref.id, ...data, status: "PENDING" as const, createdAt: now, updatedAt: now };
+}
+
+export async function updateContentRequest(id: string, data: Partial<FirestoreContentRequest>) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, createdAt: __, ...updateData } = data;
+  await db.collection("content_requests").doc(id).update({ ...updateData, updatedAt: now });
+}
+
+export async function deleteContentRequest(id: string) {
+  const db = getAdminFirestore();
+  await db.collection("content_requests").doc(id).delete();
 }
 
 // Subscription helpers
@@ -335,6 +473,12 @@ export async function upsertSubscription(
   }
 }
 
+export async function getAllSubscriptions(): Promise<FirestoreSubscription[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("subscriptions").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FirestoreSubscription);
+}
+
 export async function updateSubscriptionByStripeId(
   stripeSubscriptionId: string,
   data: Partial<FirestoreSubscription>
@@ -351,3 +495,195 @@ export async function updateSubscriptionByStripeId(
     await doc.ref.update({ ...data, updatedAt: new Date().toISOString() });
   }
 }
+
+// Blog Post helpers
+export interface FirestorePost {
+  id: string;
+  title: string;
+  slug: string; // URL friendly ID
+  content: string; // Markdown or HTML
+  authorId: string;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+  thumbnail?: string | null;
+  categoryId: string | null;
+  tags: string[];
+  isPremium: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getPosts(filters?: {
+  categoryId?: string;
+  search?: string;
+  publishedOnly?: boolean;
+}): Promise<FirestorePost[]> {
+  const db = getAdminFirestore();
+  let query: FirebaseFirestore.Query = db.collection("posts");
+
+  if (filters?.publishedOnly !== false) {
+    query = query.where("publishedAt", "!=", null);
+  }
+  if (filters?.categoryId) {
+    query = query.where("categoryId", "==", filters.categoryId);
+  }
+
+  const snapshot = await query.orderBy("publishedAt", "desc").get();
+  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as FirestorePost));
+}
+
+export async function getPostById(id: string): Promise<FirestorePost | null> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("posts").doc(id).get();
+  if (doc.exists) return { id: doc.id, ...doc.data() } as FirestorePost;
+
+  // Try slug matching
+  const slugSnapshot = await db.collection("posts").where("slug", "==", id).get();
+  if (!slugSnapshot.empty) {
+    const doc = slugSnapshot.docs[0];
+    return { id: doc.id, ...doc.data() } as FirestorePost;
+  }
+  return null;
+}
+
+export async function upsertPost(data: Partial<FirestorePost> & { id?: string }) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  const id = data.id || db.collection("posts").doc().id;
+  const ref = db.collection("posts").doc(id);
+  const doc = await ref.get();
+
+  if (doc.exists) {
+    await ref.update({ ...data, updatedAt: now });
+  } else {
+    await ref.set({
+      ...data,
+      publishedAt: data.publishedAt || (data.publishedAt === undefined ? null : data.publishedAt),
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  return { id, ...data };
+}
+
+export async function deletePost(id: string) {
+  const db = getAdminFirestore();
+  await db.collection("posts").doc(id).delete();
+}
+
+// AI Settings helpers
+export type AIProvider = "anthropic" | "openai";
+
+export interface AISettings {
+  provider: AIProvider;
+  model: string;
+  anthropicApiKey: string;
+  openaiApiKey: string;
+  openaiBaseUrl: string;
+  updatedAt: string;
+}
+
+const AI_SETTINGS_DOC = "ai_config";
+
+export async function getAISettings(): Promise<AISettings> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("settings").doc(AI_SETTINGS_DOC).get();
+  if (!doc.exists) {
+    return {
+      provider: "anthropic",
+      model: "claude-haiku-4-5",
+      anthropicApiKey: "",
+      openaiApiKey: "",
+      openaiBaseUrl: "",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  const data = doc.data()!;
+  return {
+    provider: data.provider ?? "anthropic",
+    model: data.model ?? "claude-haiku-4-5",
+    anthropicApiKey: data.anthropicApiKey ?? "",
+    openaiApiKey: data.openaiApiKey ?? "",
+    openaiBaseUrl: data.openaiBaseUrl ?? "",
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+export async function updateAISettings(data: Partial<AISettings>) {
+  const db = getAdminFirestore();
+  await db
+    .collection("settings")
+    .doc(AI_SETTINGS_DOC)
+    .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+// Rating helpers
+export interface FirestoreRating {
+  userId: string;
+  contentId: string;
+  contentType: "video" | "material" | "post";
+  value: number; // 1-5 (stars or thermometer level)
+  createdAt: string;
+}
+
+export async function saveRating(data: Omit<FirestoreRating, "createdAt">) {
+  const db = getAdminFirestore();
+  const ratingId = `${data.userId}_${data.contentId}`;
+  const now = new Date().toISOString();
+  await db.collection("ratings").doc(ratingId).set({
+    ...data,
+    createdAt: now
+  });
+}
+
+export async function getContentRatingStats(contentId: string) {
+  const db = getAdminFirestore();
+  try {
+    const snapshot = await db.collection("ratings")
+      .where("contentId", "==", contentId)
+      .get();
+
+    if (snapshot.empty) return { average: 0, count: 0 };
+
+    const values = snapshot.docs.map(doc => doc.data().value as number);
+    const total = values.reduce((acc, v) => acc + v, 0);
+    return {
+      average: parseFloat((total / values.length).toFixed(1)),
+      count: values.length
+    };
+  } catch (error) {
+    console.error("Error fetching rating stats:", error);
+    return { average: 0, count: 0 };
+  }
+}
+
+export async function getUserRating(userId: string, contentId: string) {
+  const db = getAdminFirestore();
+  const doc = await db.collection("ratings").doc(`${userId}_${contentId}`).get();
+  if (!doc.exists) return null;
+  return doc.data()!.value as number;
+}
+
+export async function getAllContentStats() {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("ratings").get();
+  
+  const stats: Record<string, { total: number; count: number; average: number }> = {};
+  
+  snapshot.docs.forEach(doc => {
+    const { contentId, value } = doc.data();
+    if (!stats[contentId]) {
+      stats[contentId] = { total: 0, count: 0, average: 0 };
+    }
+    stats[contentId].total += value;
+    stats[contentId].count += 1;
+  });
+  
+  Object.keys(stats).forEach(id => {
+    stats[id].average = parseFloat((stats[id].total / stats[id].count).toFixed(1));
+  });
+  
+  return stats;
+}
+

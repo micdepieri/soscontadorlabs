@@ -36,21 +36,9 @@ export default function Nav() {
             </span>
           </Link>
 
-          {/* Desktop nav */}
+          {/* Desktop nav - Hidden as they are now in the Sidebar */}
           <div className="hidden items-center gap-6 md:flex">
-            {links.map(({ href, label }) => (
-              <Link
-                key={href}
-                href={href}
-                className={`text-sm font-medium transition-colors ${
-                  pathname.startsWith(href)
-                    ? "text-indigo-600"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                {label}
-              </Link>
-            ))}
+            {/* Empty or Breadcrumbs can go here later */}
           </div>
 
           {/* User + mobile menu */}

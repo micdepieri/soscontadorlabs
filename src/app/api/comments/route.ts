@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { content, contentId, contentType, parentId } = body;
+  const { content, contentId, contentType, parentId, imageUrl } = body;
 
-  if (!content?.trim() || !contentId || !contentType) {
+  if ((!content?.trim() && !imageUrl) || !contentId || !contentType) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
@@ -30,13 +30,14 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const comment = await createComment({
-    content: content.trim(),
+    content: (content || "").trim(),
     authorId: user.uid,
     authorName: user.name,
     authorAvatarUrl: user.avatarUrl,
     videoId: contentType === "video" ? contentId : null,
     materialId: contentType === "material" ? contentId : null,
     parentId: parentId || null,
+    imageUrl: imageUrl || null,
   });
 
   return NextResponse.json(comment, { status: 201 });
