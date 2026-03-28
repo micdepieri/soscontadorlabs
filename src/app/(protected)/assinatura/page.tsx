@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, getSubscription } from "@/lib/firestore";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import CheckoutButton from "@/components/checkout-button";
@@ -11,17 +11,13 @@ export const metadata: Metadata = {
 };
 
 export default async function AssinaturaPage() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: { subscription: true },
-  });
-
+  const user = await getUserByUid(userId);
   if (!user) redirect("/sign-in");
 
-  const sub = user.subscription;
+  const sub = await getSubscription(userId);
   const isActive = sub?.status === "ACTIVE";
   const isCancelled = sub?.status === "CANCELLED";
 

@@ -1,0 +1,41 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can read their own user doc
+    match /users/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null; // all authenticated users can read profiles
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Videos and materials are readable by authenticated users
+    match /videos/{videoId} {
+      allow read: if request.auth != null;
+      allow write: if false; // admin only via server
+    }
+
+    match /materials/{materialId} {
+      allow read: if request.auth != null;
+      allow write: if false; // admin only via server
+    }
+
+    match /categories/{categoryId} {
+      allow read: if request.auth != null;
+      allow write: if false; // admin only via server
+    }
+
+    // Comments - authenticated users can read, authors can write
+    match /comments/{commentId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow delete: if false; // admin only via server
+    }
+
+    // Subscriptions - admin only via server
+    match /subscriptions/{subId} {
+      allow read: if request.auth != null;
+      allow write: if false; // admin only via server
+    }
+  }
+}

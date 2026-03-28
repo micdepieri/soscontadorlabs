@@ -1,7 +1,11 @@
+"use client";
+
 import Link from "next/link";
-import { Show, SignInButton, SignUpButton } from "@clerk/nextjs";
+import { useAuth } from "@/contexts/auth-context";
 
 export default function HomePage() {
+  const { user, loading } = useAuth();
+
   return (
     <main className="flex min-h-screen flex-col">
       {/* Hero */}
@@ -18,22 +22,24 @@ export default function HomePage() {
             compartilha o que aprendeu — de contador para contador.
           </p>
 
-          <Show when="signed-out">
+          {!loading && !user && (
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-              <SignUpButton mode="modal">
-                <button className="w-full rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:w-auto">
-                  Criar conta gratuita
-                </button>
-              </SignUpButton>
-              <SignInButton mode="modal">
-                <button className="w-full rounded-xl border border-gray-300 px-8 py-3.5 text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto">
-                  Já tenho conta
-                </button>
-              </SignInButton>
+              <Link
+                href="/sign-up"
+                className="w-full rounded-xl bg-indigo-600 px-8 py-3.5 text-base font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 sm:w-auto"
+              >
+                Criar conta gratuita
+              </Link>
+              <Link
+                href="/sign-in"
+                className="w-full rounded-xl border border-gray-300 px-8 py-3.5 text-base font-semibold text-gray-700 transition-colors hover:bg-gray-50 sm:w-auto"
+              >
+                Já tenho conta
+              </Link>
             </div>
-          </Show>
+          )}
 
-          <Show when="signed-in">
+          {!loading && user && (
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link
                 href="/videos"
@@ -48,7 +54,7 @@ export default function HomePage() {
                 Materiais
               </Link>
             </div>
-          </Show>
+          )}
         </div>
       </section>
 

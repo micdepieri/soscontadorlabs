@@ -1,40 +1,22 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, getComments, createComment } from "@/lib/firestore";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const contentId = searchParams.get("contentId");
   const contentType = searchParams.get("contentType");
 
-  if (!contentId || !contentType) {
+  if (!contentId || !contentType || (contentType !== "video" && contentType !== "material")) {
     return NextResponse.json({ error: "Missing params" }, { status: 400 });
   }
 
-  const where =
-    contentType === "video"
-      ? { videoId: contentId, parentId: null, isHidden: false }
-      : { materialId: contentId, parentId: null, isHidden: false };
-
-  const comments = await prisma.comment.findMany({
-    where,
-    include: {
-      author: true,
-      likes: true,
-      replies: {
-        where: { isHidden: false },
-        include: { author: true, likes: true },
-        orderBy: { createdAt: "asc" },
-      },
-    },
-    orderBy: { createdAt: "desc" },
-  });
-
+  const comments = await getComments(contentId, contentType);
   return NextResponse.json(comments);
 }
 
 export async function POST(req: NextRequest) {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
@@ -44,17 +26,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Missing fields" }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await getUserByUid(userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  const comment = await prisma.comment.create({
-    data: {
-      content: content.trim(),
-      authorId: user.id,
-      videoId: contentType === "video" ? contentId : undefined,
-      materialId: contentType === "material" ? contentId : undefined,
-      parentId: parentId || undefined,
-    },
+  const comment = await createComment({
+    content: content.trim(),
+    authorId: user.uid,
+    authorName: user.name,
+    authorAvatarUrl: user.avatarUrl,
+    videoId: contentType === "video" ? contentId : null,
+    materialId: contentType === "material" ? contentId : null,
+    parentId: parentId || null,
   });
 
   return NextResponse.json(comment, { status: 201 });

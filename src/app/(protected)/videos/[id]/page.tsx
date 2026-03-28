@@ -1,6 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuth } from "@/lib/server-auth";
+import {
+  getVideoById,
+  getUserByUid,
+  getSubscription,
+  getComments,
+  getCategories,
+} from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
@@ -12,7 +18,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const video = await prisma.video.findUnique({ where: { id } });
+  const video = await getVideoById(id);
   if (!video) return { title: "Vídeo não encontrado" };
   return {
     title: `${video.title} | Portal da Comunidade`,
@@ -22,38 +28,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function VideoPage({ params }: Props) {
   const { id } = await params;
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
 
-  const video = await prisma.video.findUnique({
-    where: { id },
-    include: {
-      category: true,
-      comments: {
-        where: { parentId: null, isHidden: false },
-        include: {
-          author: true,
-          likes: true,
-          replies: {
-            where: { isHidden: false },
-            include: { author: true, likes: true },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
+  const video = await getVideoById(id);
   if (!video || !video.publishedAt) notFound();
 
-  const dbUser = userId
-    ? await prisma.user.findUnique({
-        where: { clerkId: userId },
-        include: { subscription: true },
-      })
-    : null;
-
-  const isSubscribed = dbUser?.subscription?.status === "ACTIVE" || dbUser?.role === "ADMIN";
+  const dbUser = userId ? await getUserByUid(userId) : null;
+  const sub = userId ? await getSubscription(userId) : null;
+  const isSubscribed = sub?.status === "ACTIVE" || dbUser?.role === "ADMIN";
 
   if (video.isPremium && !isSubscribed) {
     return (
@@ -82,6 +64,11 @@ export default async function VideoPage({ params }: Props) {
     );
   }
 
+  const categories = await getCategories();
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const category = video.categoryId ? categoryMap[video.categoryId] || null : null;
+  const comments = await getComments(id, "video");
+
   return (
     <div className="mx-auto max-w-4xl">
       {/* Video */}
@@ -92,9 +79,9 @@ export default async function VideoPage({ params }: Props) {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{video.title}</h1>
-            {video.category && (
+            {category && (
               <span className="mt-1 inline-block text-sm font-medium text-indigo-600">
-                {video.category.name}
+                {category.name}
               </span>
             )}
           </div>
@@ -123,9 +110,9 @@ export default async function VideoPage({ params }: Props) {
         <CommentsSection
           contentId={video.id}
           contentType="video"
-          comments={video.comments}
-          currentUserId={dbUser?.id ?? null}
-          currentUserClerkId={userId ?? null}
+          comments={comments}
+          currentUserId={userId ?? null}
+          isLoggedIn={!!userId}
         />
       </div>
     </div>

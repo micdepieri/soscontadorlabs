@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, getVideos, getMaterials, getCategories } from "@/lib/firestore";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import AdminTabs from "@/components/admin-tabs";
@@ -9,23 +9,31 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminPage() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await getUserByUid(userId);
   if (!user || user.role !== "ADMIN") redirect("/videos");
 
-  const [videos, materials, categories] = await Promise.all([
-    prisma.video.findMany({
-      include: { category: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.material.findMany({
-      include: { category: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+  const [allVideos, allMaterials, categories] = await Promise.all([
+    getVideos({ publishedOnly: false }),
+    getMaterials({ publishedOnly: false }),
+    getCategories(),
   ]);
+
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+
+  const videos = allVideos.map((v) => ({
+    ...v,
+    publishedAt: v.publishedAt ? new Date(v.publishedAt) : null,
+    category: v.categoryId ? categoryMap[v.categoryId] || null : null,
+  }));
+
+  const materials = allMaterials.map((m) => ({
+    ...m,
+    publishedAt: m.publishedAt ? new Date(m.publishedAt) : null,
+    category: m.categoryId ? categoryMap[m.categoryId] || null : null,
+  }));
 
   return (
     <div>

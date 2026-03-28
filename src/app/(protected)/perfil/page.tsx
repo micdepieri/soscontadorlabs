@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, getSubscription } from "@/lib/firestore";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -10,26 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default async function PerfilPage() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) redirect("/sign-in");
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: {
-      subscription: true,
-      comments: {
-        where: { isHidden: false },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: {
-          video: { select: { id: true, title: true } },
-          material: { select: { id: true, title: true } },
-        },
-      },
-    },
-  });
-
+  const user = await getUserByUid(userId);
   if (!user) redirect("/sign-in");
+
+  const sub = await getSubscription(userId);
 
   const subscriptionLabel: Record<string, string> = {
     ACTIVE: "Ativa",
@@ -45,7 +32,7 @@ export default async function PerfilPage() {
     PAST_DUE: "bg-amber-100 text-amber-700",
   };
 
-  const subStatus = user.subscription?.status ?? "INACTIVE";
+  const subStatus = sub?.status ?? "INACTIVE";
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -76,8 +63,6 @@ export default async function PerfilPage() {
           </div>
         </div>
 
-        {user.bio && <p className="border-t border-gray-100 pt-4 text-gray-700">{user.bio}</p>}
-
         <div className="mt-4 border-t border-gray-100 pt-4 text-sm text-gray-500">
           Membro desde{" "}
           {new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric" }).format(
@@ -96,12 +81,9 @@ export default async function PerfilPage() {
             >
               {subscriptionLabel[subStatus]}
             </span>
-            {user.subscription?.currentPeriodEnd && subStatus === "ACTIVE" && (
+            {sub?.currentPeriodEnd && subStatus === "ACTIVE" && (
               <p className="mt-2 text-sm text-gray-500">
-                Renova em{" "}
-                {new Intl.DateTimeFormat("pt-BR").format(
-                  new Date(user.subscription.currentPeriodEnd)
-                )}
+                Renova em {new Intl.DateTimeFormat("pt-BR").format(new Date(sub.currentPeriodEnd))}
               </p>
             )}
           </div>
@@ -113,43 +95,6 @@ export default async function PerfilPage() {
           </Link>
         </div>
       </div>
-
-      {/* Recent comments */}
-      {user.comments.length > 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-8">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">Comentários recentes</h2>
-          <div className="space-y-4">
-            {user.comments.map((comment) => (
-              <div
-                key={comment.id}
-                className="border-b border-gray-100 pb-4 last:border-0 last:pb-0"
-              >
-                <p className="line-clamp-2 text-sm text-gray-700">{comment.content}</p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Em{" "}
-                  {comment.video ? (
-                    <Link
-                      href={`/videos/${comment.video.id}`}
-                      className="text-indigo-600 hover:underline"
-                    >
-                      {comment.video.title}
-                    </Link>
-                  ) : comment.material ? (
-                    <Link
-                      href={`/materiais/${comment.material.id}`}
-                      className="text-indigo-600 hover:underline"
-                    >
-                      {comment.material.title}
-                    </Link>
-                  ) : (
-                    "conteúdo removido"
-                  )}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

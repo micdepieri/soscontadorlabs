@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getVideos, getCategories } from "@/lib/firestore";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -14,26 +14,23 @@ export default async function VideosPage({
 }) {
   const { q, categoria } = await searchParams;
 
-  const [categories, videos] = await Promise.all([
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.video.findMany({
-      where: {
-        publishedAt: { not: null },
-        ...(categoria ? { category: { slug: categoria } } : {}),
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { description: { contains: q, mode: "insensitive" } },
-                { tags: { has: q } },
-              ],
-            }
-          : {}),
-      },
-      include: { category: true },
-      orderBy: { publishedAt: "desc" },
-    }),
+  const [categories, allVideos] = await Promise.all([
+    getCategories(),
+    getVideos({ publishedOnly: true, search: q || undefined }),
   ]);
+
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const selectedCategory = categoria ? categories.find((c) => c.slug === categoria) : null;
+
+  const videos = selectedCategory
+    ? allVideos.filter((v) => v.categoryId === selectedCategory.id)
+    : allVideos;
+
+  const videosWithCategory = videos.map((v) => ({
+    ...v,
+    publishedAt: v.publishedAt ? new Date(v.publishedAt) : null,
+    category: v.categoryId ? categoryMap[v.categoryId] || null : null,
+  }));
 
   return (
     <div>
@@ -103,7 +100,7 @@ export default async function VideosPage({
       )}
 
       {/* Video grid */}
-      {videos.length === 0 ? (
+      {videosWithCategory.length === 0 ? (
         <div className="py-20 text-center text-gray-500">
           <p className="text-lg">Nenhum vídeo encontrado.</p>
           {(q || categoria) && (
@@ -117,7 +114,7 @@ export default async function VideosPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {videos.map((video) => (
+          {videosWithCategory.map((video) => (
             <Link
               key={video.id}
               href={`/videos/${video.id}`}

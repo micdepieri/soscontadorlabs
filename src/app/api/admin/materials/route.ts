@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, createMaterial } from "@/lib/firestore";
 
 async function requireAdmin() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) return null;
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await getUserByUid(userId);
   return user?.role === "ADMIN" ? user : null;
 }
 
@@ -20,17 +20,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Title, URL and type required" }, { status: 400 });
   }
 
-  const material = await prisma.material.create({
-    data: {
-      title,
-      url,
-      type: type as "PDF" | "LINK" | "RESOURCE",
-      description: description || null,
-      categoryId: categoryId || null,
-      tags: tags || [],
-      isPremium: Boolean(isPremium),
-      publishedAt: publishedAt ? new Date(publishedAt) : null,
-    },
+  const material = await createMaterial({
+    title,
+    url,
+    type: type as "PDF" | "LINK" | "RESOURCE",
+    description: description || null,
+    categoryId: categoryId || null,
+    tags: tags || [],
+    isPremium: Boolean(isPremium),
+    publishedAt: publishedAt ? new Date(publishedAt).toISOString() : null,
   });
 
   return NextResponse.json(material, { status: 201 });

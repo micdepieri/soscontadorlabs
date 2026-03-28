@@ -1,16 +1,13 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, getSubscription, upsertSubscription } from "@/lib/firestore";
 import { stripe } from "@/lib/stripe";
 
 export async function POST() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: { subscription: true },
-  });
+  const user = await getUserByUid(userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
   const priceId = process.env.STRIPE_PRICE_ID;
@@ -18,13 +15,14 @@ export async function POST() {
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
-  let customerId = user.subscription?.stripeCustomerId ?? undefined;
+  const existingSub = await getSubscription(userId);
+  let customerId = existingSub?.stripeCustomerId;
 
   if (!customerId) {
     const customer = await stripe.customers.create({
       email: user.email,
       name: user.name || undefined,
-      metadata: { userId: user.id },
+      metadata: { userId: user.uid },
     });
     customerId = customer.id;
   }
@@ -36,7 +34,7 @@ export async function POST() {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: `${baseUrl}/assinatura?success=1`,
     cancel_url: `${baseUrl}/assinatura?cancelled=1`,
-    metadata: { userId: user.id },
+    metadata: { userId: user.uid },
   });
 
   return NextResponse.json({ url: session.url });

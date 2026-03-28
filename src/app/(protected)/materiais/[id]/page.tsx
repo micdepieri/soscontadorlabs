@@ -1,6 +1,12 @@
-import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { getServerAuth } from "@/lib/server-auth";
+import {
+  getMaterialById,
+  getUserByUid,
+  getSubscription,
+  getComments,
+  getCategories,
+} from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
@@ -11,7 +17,7 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const material = await prisma.material.findUnique({ where: { id } });
+  const material = await getMaterialById(id);
   if (!material) return { title: "Material não encontrado" };
   return {
     title: `${material.title} | Portal da Comunidade`,
@@ -27,38 +33,14 @@ const typeLabels: Record<string, string> = {
 
 export default async function MaterialPage({ params }: Props) {
   const { id } = await params;
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
 
-  const material = await prisma.material.findUnique({
-    where: { id },
-    include: {
-      category: true,
-      comments: {
-        where: { parentId: null, isHidden: false },
-        include: {
-          author: true,
-          likes: true,
-          replies: {
-            where: { isHidden: false },
-            include: { author: true, likes: true },
-            orderBy: { createdAt: "asc" },
-          },
-        },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
+  const material = await getMaterialById(id);
   if (!material || !material.publishedAt) notFound();
 
-  const dbUser = userId
-    ? await prisma.user.findUnique({
-        where: { clerkId: userId },
-        include: { subscription: true },
-      })
-    : null;
-
-  const isSubscribed = dbUser?.subscription?.status === "ACTIVE" || dbUser?.role === "ADMIN";
+  const dbUser = userId ? await getUserByUid(userId) : null;
+  const sub = userId ? await getSubscription(userId) : null;
+  const isSubscribed = sub?.status === "ACTIVE" || dbUser?.role === "ADMIN";
 
   if (material.isPremium && !isSubscribed) {
     return (
@@ -87,6 +69,11 @@ export default async function MaterialPage({ params }: Props) {
     );
   }
 
+  const categories = await getCategories();
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const category = material.categoryId ? categoryMap[material.categoryId] || null : null;
+  const comments = await getComments(id, "material");
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="mb-8 rounded-xl border border-gray-200 bg-white p-8">
@@ -96,9 +83,9 @@ export default async function MaterialPage({ params }: Props) {
               {typeLabels[material.type]}
             </span>
             <h1 className="text-2xl font-bold text-gray-900">{material.title}</h1>
-            {material.category && (
+            {category && (
               <span className="mt-1 inline-block text-sm font-medium text-indigo-600">
-                {material.category.name}
+                {category.name}
               </span>
             )}
           </div>
@@ -146,9 +133,9 @@ export default async function MaterialPage({ params }: Props) {
         <CommentsSection
           contentId={material.id}
           contentType="material"
-          comments={material.comments}
-          currentUserId={dbUser?.id ?? null}
-          currentUserClerkId={userId ?? null}
+          comments={comments}
+          currentUserId={userId ?? null}
+          isLoggedIn={!!userId}
         />
       </div>
     </div>

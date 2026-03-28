@@ -1,11 +1,11 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/server-auth";
+import { getUserByUid, createCategory } from "@/lib/firestore";
 
 async function requireAdmin() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) return null;
-  const user = await prisma.user.findUnique({ where: { clerkId: userId } });
+  const user = await getUserByUid(userId);
   return user?.role === "ADMIN" ? user : null;
 }
 
@@ -27,9 +27,7 @@ export async function POST(req: NextRequest) {
   if (!name) return NextResponse.json({ error: "Name required" }, { status: 400 });
 
   const slug = toSlug(name);
-  const category = await prisma.category.create({
-    data: { name, slug, description: description || null },
-  });
+  const category = await createCategory({ name, slug, description: description || null });
 
   return NextResponse.json(category, { status: 201 });
 }

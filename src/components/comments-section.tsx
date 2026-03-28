@@ -4,24 +4,14 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
-interface CommentLike {
-  id: string;
-  userId: string;
-  commentId: string;
-}
-
-interface Author {
-  id: string;
-  name: string | null;
-  avatarUrl: string | null;
-}
-
 interface Comment {
   id: string;
   content: string;
-  author: Author;
-  likes: CommentLike[];
-  createdAt: Date;
+  authorId: string;
+  authorName: string | null;
+  authorAvatarUrl: string | null;
+  likes: string[]; // array of UIDs
+  createdAt: string;
   replies?: Comment[];
 }
 
@@ -30,12 +20,12 @@ interface Props {
   contentType: "video" | "material";
   comments: Comment[];
   currentUserId: string | null;
-  currentUserClerkId: string | null;
+  isLoggedIn: boolean;
 }
 
-function formatDate(date: Date) {
+function formatDate(dateStr: string) {
   return new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" }).format(
-    Math.round((new Date(date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+    Math.round((new Date(dateStr).getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
     "day"
   );
 }
@@ -58,7 +48,7 @@ function CommentItem({
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
   const [isPending, startTransition] = useTransition();
-  const likedByMe = currentUserId ? comment.likes.some((l) => l.userId === currentUserId) : false;
+  const likedByMe = currentUserId ? comment.likes.includes(currentUserId) : false;
 
   async function handleLike() {
     if (!currentUserId) return;
@@ -89,23 +79,23 @@ function CommentItem({
   return (
     <div className={`flex gap-3 ${depth > 0 ? "mt-3 ml-8" : ""}`}>
       <div className="shrink-0">
-        {comment.author.avatarUrl ? (
+        {comment.authorAvatarUrl ? (
           <Image
-            src={comment.author.avatarUrl}
-            alt={comment.author.name || ""}
+            src={comment.authorAvatarUrl}
+            alt={comment.authorName || ""}
             width={32}
             height={32}
             className="rounded-full"
           />
         ) : (
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
-            {(comment.author.name || "U").charAt(0).toUpperCase()}
+            {(comment.authorName || "U").charAt(0).toUpperCase()}
           </div>
         )}
       </div>
       <div className="min-w-0 flex-1">
         <div className="rounded-xl bg-gray-50 px-4 py-3">
-          <p className="text-sm font-semibold text-gray-900">{comment.author.name || "Usuário"}</p>
+          <p className="text-sm font-semibold text-gray-900">{comment.authorName || "Usuário"}</p>
           <p className="mt-1 text-sm break-words whitespace-pre-wrap text-gray-700">
             {comment.content}
           </p>
@@ -196,7 +186,7 @@ export default function CommentsSection({
   contentType,
   comments: initialComments,
   currentUserId,
-  currentUserClerkId,
+  isLoggedIn,
 }: Props) {
   const [comments, setComments] = useState(initialComments);
   const [newComment, setNewComment] = useState("");
@@ -232,7 +222,7 @@ export default function CommentsSection({
     <div>
       <h2 className="mb-6 text-lg font-semibold text-gray-900">Comentários ({comments.length})</h2>
 
-      {currentUserClerkId ? (
+      {isLoggedIn ? (
         <form onSubmit={handleSubmit} className="mb-8 flex gap-3">
           <textarea
             value={newComment}

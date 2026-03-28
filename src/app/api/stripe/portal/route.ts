@@ -1,18 +1,15 @@
-import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { getServerAuth } from "@/lib/server-auth";
+import { getSubscription } from "@/lib/firestore";
 import { stripe } from "@/lib/stripe";
 
 export async function POST() {
-  const { userId } = await auth();
+  const { userId } = await getServerAuth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { clerkId: userId },
-    include: { subscription: true },
-  });
+  const sub = await getSubscription(userId);
+  const customerId = sub?.stripeCustomerId;
 
-  const customerId = user?.subscription?.stripeCustomerId;
   if (!customerId) {
     return NextResponse.json({ error: "No Stripe customer found" }, { status: 404 });
   }

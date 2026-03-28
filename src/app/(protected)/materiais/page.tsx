@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { getMaterials, getCategories } from "@/lib/firestore";
 import Link from "next/link";
 import type { Metadata } from "next";
 
@@ -53,26 +53,23 @@ export default async function MateriaisPage({
 }) {
   const { q, categoria, tipo } = await searchParams;
 
-  const [categories, materials] = await Promise.all([
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
-    prisma.material.findMany({
-      where: {
-        publishedAt: { not: null },
-        ...(categoria ? { category: { slug: categoria } } : {}),
-        ...(tipo ? { type: tipo as "PDF" | "LINK" | "RESOURCE" } : {}),
-        ...(q
-          ? {
-              OR: [
-                { title: { contains: q, mode: "insensitive" } },
-                { description: { contains: q, mode: "insensitive" } },
-              ],
-            }
-          : {}),
-      },
-      include: { category: true },
-      orderBy: { publishedAt: "desc" },
-    }),
+  const [categories, allMaterials] = await Promise.all([
+    getCategories(),
+    getMaterials({ publishedOnly: true, search: q || undefined, type: tipo || undefined }),
   ]);
+
+  const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
+  const selectedCategory = categoria ? categories.find((c) => c.slug === categoria) : null;
+
+  const materials = selectedCategory
+    ? allMaterials.filter((m) => m.categoryId === selectedCategory.id)
+    : allMaterials;
+
+  const materialsWithCategory = materials.map((m) => ({
+    ...m,
+    publishedAt: m.publishedAt ? new Date(m.publishedAt) : null,
+    category: m.categoryId ? categoryMap[m.categoryId] || null : null,
+  }));
 
   return (
     <div>
@@ -123,7 +120,7 @@ export default async function MateriaisPage({
       </form>
 
       {/* Materials list */}
-      {materials.length === 0 ? (
+      {materialsWithCategory.length === 0 ? (
         <div className="py-20 text-center text-gray-500">
           <p className="text-lg">Nenhum material encontrado.</p>
           {(q || categoria || tipo) && (
@@ -137,7 +134,7 @@ export default async function MateriaisPage({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {materials.map((material) => (
+          {materialsWithCategory.map((material) => (
             <Link
               key={material.id}
               href={`/materiais/${material.id}`}

@@ -1,7 +1,7 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
+import { upsertSubscription, updateSubscriptionByStripeId } from "@/lib/firestore";
 import type Stripe from "stripe";
 
 export async function POST(req: Request) {
@@ -29,23 +29,14 @@ export async function POST(req: Request) {
 
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
 
-      await prisma.subscription.upsert({
-        where: { userId },
-        create: {
-          userId,
-          stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: subscription.id,
-          stripePriceId: subscription.items.data[0]?.price.id,
-          status: "ACTIVE",
-          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
-        },
-        update: {
-          stripeCustomerId: session.customer as string,
-          stripeSubscriptionId: subscription.id,
-          stripePriceId: subscription.items.data[0]?.price.id,
-          status: "ACTIVE",
-          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
-        },
+      await upsertSubscription(userId, {
+        stripeCustomerId: session.customer as string,
+        stripeSubscriptionId: subscription.id,
+        stripePriceId: subscription.items.data[0]?.price.id,
+        status: "ACTIVE",
+        currentPeriodEnd: new Date(
+          (subscription.items.data[0]?.current_period_end ?? 0) * 1000
+        ).toISOString(),
       });
       break;
     }
@@ -54,22 +45,21 @@ export async function POST(req: Request) {
       const subscription = event.data.object as Stripe.Subscription;
       const status = mapStripeStatus(subscription.status);
 
-      await prisma.subscription.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: {
-          status,
-          currentPeriodEnd: new Date((subscription.items.data[0]?.current_period_end ?? 0) * 1000),
-          stripePriceId: subscription.items.data[0]?.price.id,
-        },
+      await updateSubscriptionByStripeId(subscription.id, {
+        status,
+        currentPeriodEnd: new Date(
+          (subscription.items.data[0]?.current_period_end ?? 0) * 1000
+        ).toISOString(),
+        stripePriceId: subscription.items.data[0]?.price.id,
       });
       break;
     }
 
     case "customer.subscription.deleted": {
       const subscription = event.data.object as Stripe.Subscription;
-      await prisma.subscription.updateMany({
-        where: { stripeSubscriptionId: subscription.id },
-        data: { status: "CANCELLED", currentPeriodEnd: null },
+      await updateSubscriptionByStripeId(subscription.id, {
+        status: "CANCELLED",
+        currentPeriodEnd: null,
       });
       break;
     }
@@ -81,10 +71,7 @@ export async function POST(req: Request) {
           ? (invoice.parent.subscription_details?.subscription as string | undefined)
           : undefined;
       if (subId) {
-        await prisma.subscription.updateMany({
-          where: { stripeSubscriptionId: subId },
-          data: { status: "PAST_DUE" },
-        });
+        await updateSubscriptionByStripeId(subId, { status: "PAST_DUE" });
       }
       break;
     }

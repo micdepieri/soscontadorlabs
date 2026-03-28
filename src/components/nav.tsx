@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { UserButton, useUser } from "@clerk/nextjs";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/auth-context";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useState } from "react";
 
 const links = [
@@ -13,8 +15,15 @@ const links = [
 
 export default function Nav() {
   const pathname = usePathname();
-  const { user } = useUser();
+  const router = useRouter();
+  const { user, loading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  async function handleSignOut() {
+    await signOut(auth);
+    await fetch("/api/auth/session", { method: "DELETE" });
+    router.push("/");
+  }
 
   return (
     <nav className="sticky top-0 z-50 border-b border-gray-200 bg-white">
@@ -46,15 +55,30 @@ export default function Nav() {
 
           {/* User + mobile menu */}
           <div className="flex items-center gap-3">
-            {user && (
+            {!loading && user && (
+              <>
+                <Link
+                  href="/perfil"
+                  className="hidden text-sm text-gray-600 transition-colors hover:text-gray-900 sm:block"
+                >
+                  {user.displayName || user.email?.split("@")[0] || "Perfil"}
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  className="hidden text-sm text-gray-500 transition-colors hover:text-gray-700 sm:block"
+                >
+                  Sair
+                </button>
+              </>
+            )}
+            {!loading && !user && (
               <Link
-                href="/perfil"
-                className="hidden text-sm text-gray-600 transition-colors hover:text-gray-900 sm:block"
+                href="/sign-in"
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
               >
-                {user.firstName || user.username || "Perfil"}
+                Entrar
               </Link>
             )}
-            <UserButton />
             <button
               className="rounded-md p-2 text-gray-600 hover:bg-gray-100 md:hidden"
               onClick={() => setMenuOpen(!menuOpen)}
@@ -105,6 +129,17 @@ export default function Nav() {
             >
               Perfil
             </Link>
+            {!loading && user && (
+              <button
+                onClick={() => {
+                  handleSignOut();
+                  setMenuOpen(false);
+                }}
+                className="block w-full rounded-md px-2 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+              >
+                Sair
+              </button>
+            )}
           </div>
         )}
       </div>
