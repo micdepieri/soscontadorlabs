@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 const publicRoutes = ["/", "/sign-in", "/sign-up"];
 const publicPrefixes = ["/api/webhooks", "/api/auth"];
 
-export async function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
