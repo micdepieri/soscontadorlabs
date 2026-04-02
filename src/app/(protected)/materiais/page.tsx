@@ -74,8 +74,8 @@ export default async function MateriaisPage({
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Materiais</h1>
-        <p className="mt-2 text-gray-600">
+        <h1 className="text-3xl font-bold text-cloud-white">Materiais</h1>
+        <p className="mt-2 text-cloud-white/60">
           PDFs, links e recursos práticos sobre IA para contadores.
         </p>
       </div>
@@ -87,12 +87,12 @@ export default async function MateriaisPage({
           name="q"
           defaultValue={q}
           placeholder="Buscar materiais..."
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="flex-1 rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         />
         <select
           name="categoria"
           defaultValue={categoria || ""}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
@@ -104,7 +104,7 @@ export default async function MateriaisPage({
         <select
           name="tipo"
           defaultValue={tipo || ""}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         >
           <option value="">Todos os tipos</option>
           <option value="PDF">PDF</option>
@@ -113,7 +113,7 @@ export default async function MateriaisPage({
         </select>
         <button
           type="submit"
-          className="rounded-lg bg-indigo-600 px-6 py-2 text-sm text-white transition-colors hover:bg-indigo-700"
+          className="rounded-lg bg-tech-blue px-6 py-2 text-sm text-white transition-colors hover:bg-tech-blue/80"
         >
           Buscar
         </button>
@@ -121,12 +121,12 @@ export default async function MateriaisPage({
 
       {/* Materials list */}
       {materialsWithCategory.length === 0 ? (
-        <div className="py-20 text-center text-gray-500">
+        <div className="py-20 text-center text-cloud-white/50">
           <p className="text-lg">Nenhum material encontrado.</p>
           {(q || categoria || tipo) && (
             <Link
               href="/materiais"
-              className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+              className="mt-4 inline-block text-sm text-cyan-ia hover:underline"
             >
               Limpar filtros
             </Link>
@@ -138,14 +138,14 @@ export default async function MateriaisPage({
             <Link
               key={material.id}
               href={`/materiais/${material.id}`}
-              className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-5 transition-all hover:border-indigo-300 hover:shadow-md"
+              className="group flex items-start gap-4 rounded-xl border border-app-border bg-midnight-blue p-5 transition-all hover:border-cyan-ia/50 hover:shadow-md"
             >
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500 transition-colors group-hover:bg-indigo-100">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-tech-blue/20 text-cyan-ia transition-colors group-hover:bg-tech-blue/30">
                 {typeIcons[material.type]}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="line-clamp-1 font-semibold text-gray-900 transition-colors group-hover:text-indigo-600">
+                  <h2 className="line-clamp-1 font-semibold text-cloud-white transition-colors group-hover:text-cyan-ia">
                     {material.title}
                   </h2>
                   <div className="flex shrink-0 items-center gap-2">
@@ -154,16 +154,16 @@ export default async function MateriaisPage({
                         Premium
                       </span>
                     )}
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                    <span className="rounded-full bg-app-chip px-2 py-0.5 text-xs text-cloud-white/60">
                       {typeLabels[material.type]}
                     </span>
                   </div>
                 </div>
                 {material.description && (
-                  <p className="mt-1 line-clamp-2 text-sm text-gray-500">{material.description}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-cloud-white/50">{material.description}</p>
                 )}
                 {material.category && (
-                  <span className="mt-2 inline-block text-xs font-medium text-indigo-600">
+                  <span className="mt-2 inline-block text-xs font-medium text-cyan-ia">
                     {material.category.name}
                   </span>
                 )}

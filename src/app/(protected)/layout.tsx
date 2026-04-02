@@ -3,7 +3,7 @@ import Nav from "@/components/nav";
 
 export default function ProtectedLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex min-h-screen bg-deep-navy">
       <Sidebar />
       <div className="flex flex-col flex-1 md:pl-64">
         <Nav />

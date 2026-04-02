@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
-import { stripe } from "@/lib/stripe";
+import { getStripeConfig } from "@/lib/stripe";
 import { upsertSubscription, updateSubscriptionByStripeId } from "@/lib/firestore";
 import type Stripe from "stripe";
 
@@ -9,9 +9,17 @@ export async function POST(req: Request) {
   const headersList = await headers();
   const signature = headersList.get("stripe-signature");
 
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  let stripe: import("stripe").default;
+  let webhookSecret: string;
+
+  try {
+    ({ stripe, webhookSecret } = await getStripeConfig());
+  } catch {
+    return NextResponse.json({ error: "Stripe não configurado" }, { status: 500 });
+  }
+
   if (!webhookSecret) {
-    return NextResponse.json({ error: "Webhook secret not set" }, { status: 500 });
+    return NextResponse.json({ error: "Webhook secret não configurado" }, { status: 500 });
   }
 
   let event: Stripe.Event;
@@ -61,6 +69,18 @@ export async function POST(req: Request) {
         status: "CANCELLED",
         currentPeriodEnd: null,
       });
+      break;
+    }
+
+    case "invoice.paid": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subId =
+        invoice.parent?.type === "subscription_details"
+          ? (invoice.parent.subscription_details?.subscription as string | undefined)
+          : undefined;
+      if (subId) {
+        await updateSubscriptionByStripeId(subId, { status: "ACTIVE" });
+      }
       break;
     }
 

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { AuthProvider } from "@/contexts/auth-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -48,9 +49,19 @@ export default function RootLayout({
     <AuthProvider>
       <html
         lang="pt-BR"
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
       >
-        <body className="flex min-h-full flex-col">{children}</body>
+        <head>
+          {/* Anti-FOUC: apply stored theme before first paint */}
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){try{var t=localStorage.getItem('theme');if(t==='light'){document.documentElement.classList.remove('dark');document.documentElement.classList.add('light');}}catch(e){}})();`,
+            }}
+          />
+        </head>
+        <body className="flex min-h-full flex-col">
+          <ThemeProvider>{children}</ThemeProvider>
+        </body>
       </html>
     </AuthProvider>
   );

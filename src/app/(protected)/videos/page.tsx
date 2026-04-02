@@ -77,10 +77,10 @@ export default async function VideosPage({
         </div>
       ) : (
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 line-clamp-1">
+          <h1 className="text-3xl font-bold text-cloud-white line-clamp-1">
             {selectedCategory ? `# ${selectedCategory.name}` : "Portal da Comunidade"}
           </h1>
-          <p className="mt-2 text-gray-600 max-w-2xl">
+          <p className="mt-2 text-cloud-white/60 max-w-2xl">
             {selectedCategory 
               ? `Explorando conteúdos sobre ${selectedCategory.name}.` 
               : "Bem-vindo! Escolha um canal na lateral para começar a explorar as experiências práticas com IA."
@@ -96,12 +96,12 @@ export default async function VideosPage({
           name="q"
           defaultValue={q}
           placeholder="Buscar vídeos ou artigos..."
-          className="flex-1 rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="flex-1 rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         />
         <select
           name="categoria"
           defaultValue={categoria || ""}
-          className="rounded-lg border border-gray-300 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         >
           <option value="">Todas as categorias</option>
           {categories.map((c) => (
@@ -112,7 +112,7 @@ export default async function VideosPage({
         </select>
         <button
           type="submit"
-          className="rounded-lg bg-indigo-600 px-6 py-2 text-sm text-white transition-colors hover:bg-indigo-700 font-semibold"
+          className="rounded-lg bg-tech-blue px-6 py-2 text-sm text-white transition-colors hover:bg-tech-blue/80 font-semibold"
         >
           Buscar
         </button>
@@ -125,8 +125,8 @@ export default async function VideosPage({
             href="/videos"
             className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
               !categoria
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-tech-blue text-white"
+                : "bg-app-chip text-cloud-white/70 hover:bg-app-chip-accent"
             }`}
           >
             Todos
@@ -137,8 +137,8 @@ export default async function VideosPage({
               href={`/videos?categoria=${c.slug}`}
               className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                 categoria === c.slug
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  ? "bg-tech-blue text-white"
+                  : "bg-app-chip text-cloud-white/70 hover:bg-app-chip-accent"
               }`}
             >
               {c.name}
@@ -149,12 +149,12 @@ export default async function VideosPage({
 
       {/* Content grid */}
       {contentWithCategory.length === 0 ? (
-        <div className="py-20 text-center text-gray-500">
+        <div className="py-20 text-center text-cloud-white/50">
           <p className="text-lg font-medium">Nenhum conteúdo encontrado.</p>
           {(q || categoria) && (
             <Link
               href="/videos"
-              className="mt-4 inline-block text-sm text-indigo-600 hover:underline"
+              className="mt-4 inline-block text-sm text-cyan-ia hover:underline"
             >
               Limpar filtros
             </Link>
@@ -170,7 +170,7 @@ export default async function VideosPage({
               <Link
                 key={item.id}
                 href={href}
-                className="group flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all hover:border-indigo-300 hover:shadow-md"
+                className="group flex flex-col overflow-hidden rounded-xl border border-app-border bg-midnight-blue shadow-sm transition-all hover:border-cyan-ia/50 hover:shadow-md"
               >
                 {/* Visual Header (Thumbnail or Icon) */}
                 {item.thumbnail ? (
@@ -182,10 +182,10 @@ export default async function VideosPage({
                     />
                   </div>
                 ) : (
-                  <div className={`flex aspect-video w-full items-center justify-center ${isVideo ? 'bg-gradient-to-br from-indigo-100 to-purple-100' : 'bg-gray-50 border-b border-gray-100'}`}>
+                  <div className={`flex aspect-video w-full items-center justify-center ${isVideo ? 'bg-gradient-to-br from-indigo-100 to-purple-100' : 'bg-deep-navy border-b border-app-border'}`}>
                     {isVideo ? (
                       <svg
-                        className="h-12 w-12 text-indigo-400"
+                        className="h-12 w-12 text-cyan-ia/60"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -204,7 +204,7 @@ export default async function VideosPage({
                         />
                       </svg>
                     ) : (
-                      <svg className="h-12 w-12 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="h-12 w-12 text-cloud-white/30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                       </svg>
                     )}
@@ -214,7 +214,7 @@ export default async function VideosPage({
                 <div className="flex flex-1 flex-col p-4">
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-1.5">
-                      <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isVideo ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${isVideo ? 'bg-tech-blue/30 text-cyan-ia' : 'bg-emerald-100 text-emerald-700'}`}>
                         {isVideo ? 'Vídeo' : 'Artigo'}
                       </span>
                       {item.isPremium && (
@@ -225,21 +225,21 @@ export default async function VideosPage({
                     </div>
                   </div>
                   
-                  <h2 className="line-clamp-2 flex-1 font-semibold text-gray-900 transition-colors group-hover:text-indigo-600">
+                  <h2 className="line-clamp-2 flex-1 font-semibold text-cloud-white transition-colors group-hover:text-cyan-ia">
                     {item.title}
                   </h2>
                   
                   {'description' in item && item.description && (
-                    <p className="mt-2 line-clamp-2 text-xs text-gray-500">{item.description}</p>
+                    <p className="mt-2 line-clamp-2 text-xs text-cloud-white/50">{item.description}</p>
                   )}
                   
-                  <div className="mt-4 flex items-center justify-between border-t border-gray-50 pt-3">
+                  <div className="mt-4 flex items-center justify-between border-t border-app-border pt-3">
                     {item.category && (
-                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">
+                      <span className="text-[10px] font-bold text-cloud-white/40 uppercase tracking-tight">
                         {item.category.name}
                       </span>
                     )}
-                    <span className="text-[10px] text-gray-400">
+                    <span className="text-[10px] text-cloud-white/40">
                       {item.publishedAtDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>

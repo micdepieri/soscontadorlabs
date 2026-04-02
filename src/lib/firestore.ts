@@ -618,6 +618,47 @@ export async function updateAISettings(data: Partial<AISettings>) {
     .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
 }
 
+// Stripe Settings helpers
+export interface StripeSettings {
+  secretKey: string;
+  publishableKey: string;
+  webhookSecret: string;
+  priceId: string;
+  updatedAt: string;
+}
+
+const STRIPE_SETTINGS_DOC = "stripe_config";
+
+export async function getStripeSettings(): Promise<StripeSettings> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("settings").doc(STRIPE_SETTINGS_DOC).get();
+  if (!doc.exists) {
+    return {
+      secretKey: "",
+      publishableKey: "",
+      webhookSecret: "",
+      priceId: "",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  const data = doc.data()!;
+  return {
+    secretKey: data.secretKey ?? "",
+    publishableKey: data.publishableKey ?? "",
+    webhookSecret: data.webhookSecret ?? "",
+    priceId: data.priceId ?? "",
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+export async function updateStripeSettings(data: Partial<StripeSettings>) {
+  const db = getAdminFirestore();
+  await db
+    .collection("settings")
+    .doc(STRIPE_SETTINGS_DOC)
+    .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
 // Rating helpers
 export interface FirestoreRating {
   userId: string;

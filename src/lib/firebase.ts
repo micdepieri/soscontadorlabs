@@ -33,6 +33,19 @@ function lazyProxy<T extends object>(factory: () => T): T {
     get(_, prop) {
       return (factory() as any)[prop];
     },
+    set(_, prop, value) {
+      // Sem esse trap, escritas como `db._firestoreClient = new FirestoreClient()`
+      // iam para o target `{}`, não para a instância real. Leituras subsequentes
+      // via factory voltavam undefined, causando erros de asyncQueue etc.
+      (factory() as any)[prop] = value;
+      return true;
+    },
+    getPrototypeOf(_) {
+      // `instanceof` usa [[GetPrototypeOf]] — sem esse trap, Proxy com target {}
+      // falha checks como `db instanceof Firestore` dentro do SDK do Firebase.
+      if (typeof window === "undefined") return Object.prototype;
+      return Object.getPrototypeOf(factory());
+    },
   });
 }
 

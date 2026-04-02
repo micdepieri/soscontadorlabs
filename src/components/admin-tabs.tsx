@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
+import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { storage } from "@/lib/firebase";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 interface Category {
   id: string;
@@ -56,6 +58,17 @@ interface AISettingsData {
   updatedAt: string;
 }
 
+interface StripeSettingsData {
+  publishableKey: string;
+  publishableKeySet: boolean;
+  secretKeySet: boolean;
+  secretKeyMasked: string;
+  webhookSecretSet: boolean;
+  webhookSecretMasked: string;
+  priceId: string;
+  updatedAt: string;
+}
+
 interface Member {
   uid: string;
   email: string;
@@ -89,6 +102,7 @@ export default function AdminTabs({
   categories,
   contentRequests,
   aiSettings,
+  stripeSettings,
   members,
   ratingStats,
 }: {
@@ -98,6 +112,7 @@ export default function AdminTabs({
   categories: Category[];
   contentRequests: ContentRequest[];
   aiSettings: AISettingsData;
+  stripeSettings: StripeSettingsData;
   members: Member[];
   ratingStats: Record<string, { total: number; count: number; average: number }>;
 }) {
@@ -127,7 +142,7 @@ export default function AdminTabs({
   return (
     <div>
       {/* Tab nav */}
-      <div className="mb-8 border-b border-gray-200 overflow-x-auto">
+      <div className="mb-8 border-b border-app-border overflow-x-auto">
         <div className="flex gap-6 min-w-max pb-px">
           {(["videos", "materials", "posts", "categories", "demands", "settings", "members"] as Tab[]).map(
             (t) => (
@@ -136,8 +151,8 @@ export default function AdminTabs({
                 onClick={() => handleTabChange(t)}
                 className={`relative border-b-2 pb-3 text-sm font-medium transition-colors ${
                   tab === t
-                    ? "border-indigo-600 text-indigo-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700"
+                    ? "border-cyan-ia text-cyan-ia"
+                    : "border-transparent text-cloud-white/50 hover:text-cloud-white"
                 }`}
               >
                 {t === "videos"
@@ -190,7 +205,11 @@ export default function AdminTabs({
         <ContentRequestsTab requests={contentRequests} onSave={() => router.refresh()} />
       )}
       {tab === "settings" && (
-        <AISettingsTab initialSettings={aiSettings} onSave={() => router.refresh()} />
+        <div className="space-y-12">
+          <AISettingsTab initialSettings={aiSettings} onSave={() => router.refresh()} />
+          <hr className="border-app-border" />
+          <StripeSettingsTab initialSettings={stripeSettings} onSave={() => router.refresh()} />
+        </div>
       )}
       {tab === "members" && (
         <MembersTab initialMembers={members} onSave={() => router.refresh()} />
@@ -288,11 +307,11 @@ function VideoTab({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">{videos.length} vídeos</h2>
+        <h2 className="font-semibold text-cloud-white">{videos.length} vídeos</h2>
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white transition-colors hover:bg-indigo-700"
+            className="rounded-lg bg-tech-blue px-4 py-2 text-sm text-white transition-colors hover:bg-tech-blue/80"
           >
             + Adicionar vídeo
           </button>
@@ -302,48 +321,48 @@ function VideoTab({
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="mb-8 space-y-4 rounded-xl border border-indigo-200 bg-indigo-50 p-6"
+          className="mb-8 space-y-4 rounded-xl border border-app-border bg-midnight-blue p-6"
         >
-          <h3 className="text-sm font-bold text-indigo-900">
+          <h3 className="text-sm font-bold text-cyan-ia">
             {editingId ? "Editar vídeo" : "Novo vídeo"}
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Título *</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Título *</label>
               <input
                 required
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">URL do vídeo *</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">URL do vídeo *</label>
               <input
                 required
                 value={form.url}
                 onChange={(e) => setForm({ ...form, url: e.target.value })}
                 placeholder="YouTube, Vimeo ou embed URL"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Descrição</label>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">Descrição</label>
             <textarea
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Categoria</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Categoria</label>
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               >
                 <option value="">Sem categoria</option>
                 {categories.map((c) => (
@@ -354,32 +373,32 @@ function VideoTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                 Tags (separadas por vírgula)
               </label>
               <input
                 value={form.tags}
                 onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               />
             </div>
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-cloud-white/70">
               <input
                 type="checkbox"
                 checked={form.isPremium}
                 onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="rounded text-cyan-ia focus:ring-cyan-ia"
               />
               Premium
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-cloud-white/70">
               <input
                 type="checkbox"
                 checked={form.publish}
                 onChange={(e) => setForm({ ...form, publish: e.target.checked })}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="rounded text-cyan-ia focus:ring-cyan-ia"
               />
               Publicar agora
             </label>
@@ -388,14 +407,14 @@ function VideoTab({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
             >
               {saving ? "Salvando..." : editingId ? "Atualizar" : "Salvar"}
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-app-border px-6 py-2 text-sm font-medium text-cloud-white/70 hover:bg-midnight-blue"
             >
               Cancelar
             </button>
@@ -407,13 +426,13 @@ function VideoTab({
         {videos.map((video) => (
           <div
             key={video.id}
-            className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
+            className="flex items-center justify-between rounded-xl border border-app-border bg-midnight-blue px-5 py-4 shadow-sm"
           >
             <div className="min-w-0">
-              <p className="truncate font-semibold text-gray-900">{video.title}</p>
-              <p className="truncate text-xs text-gray-400">{video.url}</p>
+              <p className="truncate font-semibold text-cloud-white">{video.title}</p>
+              <p className="truncate text-xs text-cloud-white/40">{video.url}</p>
               {video.category && (
-                <span className="mt-1 inline-block rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600">
+                <span className="mt-1 inline-block rounded-md bg-tech-blue/20 px-1.5 py-0.5 text-[10px] font-medium text-cyan-ia">
                   {video.category.name}
                 </span>
               )}
@@ -425,9 +444,9 @@ function VideoTab({
                 <div className="flex flex-col items-center">
                    <div className="flex items-center gap-1">
                       <span className="text-lg">🔥</span>
-                      <span className="text-sm font-black text-gray-900">{ratingStats[video.id].average}</span>
+                      <span className="text-sm font-black text-cloud-white">{ratingStats[video.id].average}</span>
                    </div>
-                   <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{ratingStats[video.id].count} votos</div>
+                   <div className="text-[9px] font-bold text-cloud-white/40 uppercase tracking-tighter">{ratingStats[video.id].count} votos</div>
                 </div>
               )}
             </div>
@@ -439,14 +458,14 @@ function VideoTab({
                 </span>
               )}
               {!video.publishedAt && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 uppercase tracking-tighter">
+                <span className="rounded-full bg-app-chip px-2 py-0.5 text-[10px] font-medium text-cloud-white/70 uppercase tracking-tighter">
                   Rascunho
                 </span>
               )}
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleEdit(video)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-medium text-cyan-ia hover:text-cyan-ia/70"
                 >
                   Editar
                 </button>
@@ -489,6 +508,33 @@ function MaterialTab({
     publish: true,
   });
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    try {
+      const fileName = `${Date.now()}-${file.name}`;
+      const storageRef = ref(storage, `materials/${fileName}`);
+      await uploadBytes(storageRef, file);
+      const downloadUrl = await getDownloadURL(storageRef);
+      
+      setForm(prev => ({
+        ...prev,
+        url: downloadUrl,
+        type: file.type === "application/pdf" ? "PDF" : prev.type
+      }));
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      alert("Erro ao fazer upload do arquivo.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -557,11 +603,11 @@ function MaterialTab({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
-        <h2 className="font-semibold text-gray-900">{materials.length} materiais</h2>
+        <h2 className="font-semibold text-cloud-white">{materials.length} materiais</h2>
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white transition-colors hover:bg-indigo-700"
+            className="rounded-lg bg-tech-blue px-4 py-2 text-sm text-white transition-colors hover:bg-tech-blue/80"
           >
             + Adicionar material
           </button>
@@ -571,38 +617,54 @@ function MaterialTab({
       {showForm && (
         <form
           onSubmit={handleSubmit}
-          className="mb-8 space-y-4 rounded-xl border border-indigo-200 bg-indigo-50 p-6"
+          className="mb-8 space-y-4 rounded-xl border border-app-border bg-midnight-blue p-6"
         >
-          <h3 className="text-sm font-bold text-indigo-900">
+          <h3 className="text-sm font-bold text-cyan-ia">
             {editingId ? "Editar material" : "Novo material"}
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Título *</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Título *</label>
               <input
                 required
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               />
             </div>
-            <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">URL *</label>
-              <input
-                required
-                value={form.url}
-                onChange={(e) => setForm({ ...form, url: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
+            <div className="flex flex-col">
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">URL *</label>
+              <div className="flex gap-2">
+                <input
+                  required
+                  value={form.url}
+                  onChange={(e) => setForm({ ...form, url: e.target.value })}
+                  className="flex-1 rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={uploading}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="rounded-lg bg-app-chip px-3 py-2 text-xs font-medium text-cloud-white transition-colors hover:bg-app-chip-accent disabled:opacity-50"
+                >
+                  {uploading ? "..." : "Upload"}
+                </button>
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Tipo</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Tipo</label>
               <select
                 value={form.type}
                 onChange={(e) => setForm({ ...form, type: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               >
                 <option value="LINK">Link</option>
                 <option value="PDF">PDF</option>
@@ -610,11 +672,11 @@ function MaterialTab({
               </select>
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium text-gray-700">Categoria</label>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Categoria</label>
               <select
                 value={form.categoryId}
                 onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               >
                 <option value="">Sem categoria</option>
                 {categories.map((c) => (
@@ -626,40 +688,40 @@ function MaterialTab({
             </div>
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">Descrição</label>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">Descrição</label>
             <textarea
               rows={2}
               value={form.description}
               onChange={(e) => setForm({ ...form, description: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">
               Tags (separadas por vírgula)
             </label>
             <input
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
           <div className="flex items-center gap-6">
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-cloud-white/70">
               <input
                 type="checkbox"
                 checked={form.isPremium}
                 onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="rounded text-cyan-ia focus:ring-cyan-ia"
               />
               Premium
             </label>
-            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-cloud-white/70">
               <input
                 type="checkbox"
                 checked={form.publish}
                 onChange={(e) => setForm({ ...form, publish: e.target.checked })}
-                className="rounded text-indigo-600 focus:ring-indigo-500"
+                className="rounded text-cyan-ia focus:ring-cyan-ia"
               />
               Publicar agora
             </label>
@@ -668,14 +730,14 @@ function MaterialTab({
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
             >
               {saving ? "Salvando..." : editingId ? "Atualizar" : "Salvar"}
             </button>
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-app-border px-6 py-2 text-sm font-medium text-cloud-white/70 hover:bg-midnight-blue"
             >
               Cancelar
             </button>
@@ -687,15 +749,15 @@ function MaterialTab({
         {materials.map((material) => (
           <div
             key={material.id}
-            className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
+            className="flex items-center justify-between rounded-xl border border-app-border bg-midnight-blue px-5 py-4 shadow-sm"
           >
             <div className="min-w-0">
-              <p className="truncate font-semibold text-gray-900">{material.title}</p>
-              <p className="text-xs text-gray-400">
+              <p className="truncate font-semibold text-cloud-white">{material.title}</p>
+              <p className="text-xs text-cloud-white/40">
                 {material.type} · <span className="truncate">{material.url}</span>
               </p>
               {material.category && (
-                <span className="mt-1 inline-block rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600">
+                <span className="mt-1 inline-block rounded-md bg-tech-blue/20 px-1.5 py-0.5 text-[10px] font-medium text-cyan-ia">
                   {material.category.name}
                 </span>
               )}
@@ -707,9 +769,9 @@ function MaterialTab({
                 <div className="flex flex-col items-center">
                    <div className="flex items-center gap-1">
                       <span className="text-lg">🔥</span>
-                      <span className="text-sm font-black text-gray-900">{ratingStats[material.id].average}</span>
+                      <span className="text-sm font-black text-cloud-white">{ratingStats[material.id].average}</span>
                    </div>
-                   <div className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter">{ratingStats[material.id].count} votos</div>
+                   <div className="text-[9px] font-bold text-cloud-white/40 uppercase tracking-tighter">{ratingStats[material.id].count} votos</div>
                 </div>
               )}
             </div>
@@ -721,14 +783,14 @@ function MaterialTab({
                 </span>
               )}
               {!material.publishedAt && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-gray-600 uppercase tracking-tighter">
+                <span className="rounded-full bg-app-chip px-2 py-0.5 text-[10px] font-medium text-cloud-white/70 uppercase tracking-tighter">
                   Rascunho
                 </span>
               )}
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => handleEdit(material)}
-                  className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-medium text-cyan-ia hover:text-cyan-ia/70"
                 >
                   Editar
                 </button>
@@ -795,33 +857,33 @@ function CategoryTab({ categories, onSave }: { categories: Category[]; onSave: (
     <div className="max-w-lg">
       <form
         onSubmit={handleSubmit}
-        className="mb-8 space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm"
+        className="mb-8 space-y-4 rounded-xl border border-app-border bg-midnight-blue p-6 shadow-sm"
       >
-        <h3 className="text-sm font-bold text-gray-900">
+        <h3 className="text-sm font-bold text-cloud-white">
           {editingId ? "Editar categoria" : "Nova categoria"}
         </h3>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">Nome *</label>
+          <label className="mb-1 block text-xs font-medium text-cloud-white/70">Nome *</label>
           <input
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
           />
         </div>
         <div>
-          <label className="mb-1 block text-xs font-medium text-gray-700">Descrição</label>
+          <label className="mb-1 block text-xs font-medium text-cloud-white/70">Descrição</label>
           <input
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
           />
         </div>
         <div className="flex gap-3 pt-2">
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
           >
             {saving ? "Salvando..." : editingId ? "Atualizar" : "Criar categoria"}
           </button>
@@ -829,7 +891,7 @@ function CategoryTab({ categories, onSave }: { categories: Category[]; onSave: (
             <button
               type="button"
               onClick={handleCancel}
-              className="rounded-lg border border-gray-300 px-6 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-lg border border-app-border px-6 py-2 text-sm font-medium text-cloud-white/70 hover:bg-midnight-blue"
             >
               Cancelar
             </button>
@@ -841,16 +903,16 @@ function CategoryTab({ categories, onSave }: { categories: Category[]; onSave: (
         {categories.map((cat) => (
           <div
             key={cat.id}
-            className="flex items-center justify-between rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
+            className="flex items-center justify-between rounded-xl border border-app-border bg-midnight-blue px-5 py-4 shadow-sm"
           >
             <div>
-              <p className="font-semibold text-gray-900">{cat.name}</p>
-              <p className="text-xs text-gray-400">/{cat.slug}</p>
+              <p className="font-semibold text-cloud-white">{cat.name}</p>
+              <p className="text-xs text-cloud-white/40">/{cat.slug}</p>
             </div>
             <div className="flex items-center gap-3">
               <button
                 onClick={() => handleEdit(cat as any)}
-                className="text-xs font-medium text-indigo-600 hover:text-indigo-800"
+                className="text-xs font-medium text-cyan-ia hover:text-cyan-ia/70"
               >
                 Editar
               </button>
@@ -879,7 +941,7 @@ const STATUS_COLORS: Record<ContentRequest["status"], string> = {
   PENDING: "bg-yellow-100 text-yellow-800",
   IN_PROGRESS: "bg-blue-100 text-blue-800",
   DONE: "bg-green-100 text-green-800",
-  CANCELLED: "bg-gray-100 text-gray-600",
+  CANCELLED: "bg-app-chip text-cloud-white/60",
 };
 
 function ContentRequestsTab({
@@ -915,16 +977,16 @@ function ContentRequestsTab({
   return (
     <div>
       <div className="mb-6">
-        <h2 className="font-semibold text-gray-900">
+        <h2 className="font-semibold text-cloud-white">
           Demandas de Conteúdo geradas pelo Assistente IA
         </h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <p className="mt-1 text-sm text-cloud-white/50">
           Registros de quando o assistente não encontrou conteúdo adequado para o usuário.
         </p>
       </div>
 
       {requests.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-gray-300 p-12 text-center text-sm text-gray-400">
+        <div className="rounded-xl border border-dashed border-app-border p-12 text-center text-sm text-cloud-white/40">
           Nenhuma demanda registrada ainda.
         </div>
       ) : (
@@ -933,7 +995,7 @@ function ContentRequestsTab({
             (status) =>
               grouped[status].length > 0 && (
                 <div key={status}>
-                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cloud-white/50">
                     <span className={`rounded-full px-2 py-0.5 ${STATUS_COLORS[status]}`}>
                       {STATUS_LABELS[status]}
                     </span>
@@ -943,13 +1005,13 @@ function ContentRequestsTab({
                     {grouped[status].map((req) => (
                       <div
                         key={req.id}
-                        className="rounded-xl border border-gray-200 bg-white px-5 py-4 shadow-sm"
+                        className="rounded-xl border border-app-border bg-midnight-blue px-5 py-4 shadow-sm"
                       >
                         <div className="flex items-start justify-between gap-4">
                           <div className="min-w-0 flex-1">
-                            <p className="font-semibold text-gray-900 truncate">{req.topic}</p>
-                            <p className="mt-1 text-sm text-gray-500 line-clamp-2">{req.userMessage}</p>
-                            <div className="mt-2 flex items-center gap-3 text-xs text-gray-400">
+                            <p className="font-semibold text-cloud-white truncate">{req.topic}</p>
+                            <p className="mt-1 text-sm text-cloud-white/50 line-clamp-2">{req.userMessage}</p>
+                            <div className="mt-2 flex items-center gap-3 text-xs text-cloud-white/40">
                               <span>{req.userName || "Usuário"}</span>
                               <span>·</span>
                               <span>{new Date(req.createdAt).toLocaleDateString("pt-BR")}</span>
@@ -964,7 +1026,7 @@ function ContentRequestsTab({
                                   e.target.value as ContentRequest["status"]
                                 )
                               }
-                              className="rounded-lg border border-gray-300 px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              className="rounded-lg border border-app-border px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                             >
                               {(
                                 [
@@ -1097,24 +1159,24 @@ function PostTab({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Artigos & Postagens (Substack-style)</h2>
+        <h2 className="text-xl font-semibold text-cloud-white">Artigos & Postagens (Substack-style)</h2>
         <button
           onClick={() => setShowForm(true)}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          className="rounded-lg bg-tech-blue px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-tech-blue/80"
         >
           Novo Artigo
         </button>
       </div>
 
       {showForm && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h3 className="mb-6 text-lg font-bold text-gray-900">
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-6 shadow-sm">
+          <h3 className="mb-6 text-lg font-bold text-cloud-white">
             {editingId ? "Editar Artigo" : "Criar Novo Artigo / Código de Agente"}
           </h3>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Título</label>
+                <label className="text-sm font-medium text-cloud-white/70">Título</label>
                 <input
                   type="text"
                   required
@@ -1123,43 +1185,43 @@ function PostTab({
                     const title = e.target.value;
                     setForm({ ...form, title, slug: editingId ? form.slug : generateSlug(title) });
                   }}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                   placeholder="Ex: Como configurar um Agente de Voz com OpenAI"
                 />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Slug (URL)</label>
+                <label className="text-sm font-medium text-cloud-white/70">Slug (URL)</label>
                 <input
                   type="text"
                   required
                   value={form.slug}
                   onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Conteúdo (Markdown / Código)</label>
+              <label className="text-sm font-medium text-cloud-white/70">Conteúdo (Markdown / Código)</label>
               <textarea
                 required
                 rows={12}
                 value={form.content}
                 onChange={(e) => setForm({ ...form, content: e.target.value })}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                 placeholder="Escreva aqui seu artigo ou cole o código do seu agente..."
               />
-              <p className="text-xs text-gray-400">Suporta Markdown para formatação e blocos de código.</p>
+              <p className="text-xs text-cloud-white/40">Suporta Markdown para formatação e blocos de código.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Categoria</label>
+                <label className="text-sm font-medium text-cloud-white/70">Categoria</label>
                 <select
                   required
                   value={form.categoryId}
                   onChange={(e) => setForm({ ...form, categoryId: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                 >
                   <option value="">Selecione uma categoria</option>
                   {categories.map((cat) => (
@@ -1170,35 +1232,35 @@ function PostTab({
                 </select>
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium text-gray-700">Tags (separadas por vírgula)</label>
+                <label className="text-sm font-medium text-cloud-white/70">Tags (separadas por vírgula)</label>
                 <input
                   type="text"
                   value={form.tags}
                   onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-ia"
                   placeholder="n8n, agente, automaçao"
                 />
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-6 border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap gap-6 border-t border-app-border pt-4">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.isPremium}
                   onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
-                  className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded text-cyan-ia focus:ring-cyan-ia"
                 />
-                <span className="text-sm font-medium text-gray-700">Conteúdo Premium</span>
+                <span className="text-sm font-medium text-cloud-white/70">Conteúdo Premium</span>
               </label>
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={form.publish}
                   onChange={(e) => setForm({ ...form, publish: e.target.checked })}
-                  className="h-4 w-4 rounded text-indigo-600 focus:ring-indigo-500"
+                  className="h-4 w-4 rounded text-cyan-ia focus:ring-cyan-ia"
                 />
-                <span className="text-sm font-medium text-gray-700">Publicar agora</span>
+                <span className="text-sm font-medium text-cloud-white/70">Publicar agora</span>
               </label>
             </div>
 
@@ -1206,14 +1268,14 @@ function PostTab({
               <button
                 type="button"
                 onClick={handleCancel}
-                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="rounded-lg px-4 py-2 text-sm font-medium text-cloud-white/60 hover:bg-midnight-blue"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
                 disabled={saving}
-                className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 disabled:opacity-50"
+                className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white transition-colors hover:bg-tech-blue/80 disabled:opacity-50"
               >
                 {saving ? "Salvando..." : editingId ? "Atualizar Artigo" : "Salvar Artigo"}
               </button>
@@ -1223,51 +1285,51 @@ function PostTab({
       )}
 
       {/* Posts List */}
-      <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm font-sans mb-10">
+      <div className="overflow-hidden rounded-xl border border-app-border bg-midnight-blue shadow-sm font-sans mb-10">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
+          <thead className="bg-midnight-blue">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Título</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase text-center">Termômetro</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Categoria</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-              <th className="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Ações</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-cloud-white/50 uppercase">Título</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-cloud-white/50 uppercase text-center">Termômetro</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-cloud-white/50 uppercase">Categoria</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-cloud-white/50 uppercase">Status</th>
+              <th className="px-6 py-3 text-left text-xs font-semibold text-cloud-white/50 uppercase">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200">
             {posts.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-sm text-gray-500">
+                <td colSpan={5} className="px-6 py-12 text-center text-sm text-cloud-white/50">
                   Nenhum artigo publicado ainda. Comece compartilhando seu primeiro conteúdo!
                 </td>
               </tr>
             ) : (
               posts.map((post) => (
-                <tr key={post.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={post.id} className="hover:bg-midnight-blue transition-colors">
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900 truncate max-w-xs">{post.title}</div>
-                    <div className="text-xs text-gray-400">/{post.slug}</div>
+                    <div className="font-medium text-cloud-white truncate max-w-xs">{post.title}</div>
+                    <div className="text-xs text-cloud-white/40">/{post.slug}</div>
                   </td>
                   <td className="px-6 py-4 text-center">
                     {ratingStats[post.id] && ratingStats[post.id].count > 0 ? (
                       <div className="inline-flex flex-col items-center">
                         <div className="flex items-center gap-1">
                           <span className="text-base">🔥</span>
-                          <span className="text-sm font-bold text-gray-900">{ratingStats[post.id].average}</span>
+                          <span className="text-sm font-bold text-cloud-white">{ratingStats[post.id].average}</span>
                         </div>
-                        <span className="text-[9px] text-gray-400 font-bold uppercase">{ratingStats[post.id].count} votos</span>
+                        <span className="text-[9px] text-cloud-white/40 font-bold uppercase">{ratingStats[post.id].count} votos</span>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-300">—</span>
+                      <span className="text-xs text-cloud-white/30">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-sm text-gray-600">{post.category?.name || "-"}</span>
+                    <span className="text-sm text-cloud-white/60">{post.category?.name || "-"}</span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <span className={`h-2 w-2 rounded-full ${post.publishedAt ? "bg-green-500" : "bg-yellow-500"}`} />
-                      <span className="text-sm font-medium text-gray-700">
+                      <span className="text-sm font-medium text-cloud-white/70">
                         {post.publishedAt ? "Publicado" : "Rascunho"}
                       </span>
                       {post.isPremium && (
@@ -1281,7 +1343,7 @@ function PostTab({
                     <div className="flex items-center gap-3">
                       <button
                         onClick={() => handleEdit(post)}
-                        className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+                        className="text-sm font-medium text-cyan-ia hover:text-cyan-ia/70"
                       >
                         Editar
                       </button>
@@ -1389,8 +1451,8 @@ function AISettingsTab({
   return (
     <div className="max-w-xl">
       <div className="mb-6">
-        <h2 className="font-semibold text-gray-900">Configurações do Assistente IA</h2>
-        <p className="mt-1 text-sm text-gray-500">
+        <h2 className="font-semibold text-cloud-white">Configurações do Assistente IA</h2>
+        <p className="mt-1 text-sm text-cloud-white/50">
           Selecione o provedor de IA e o modelo a ser usado no assistente da comunidade.
           As chaves de API são armazenadas com segurança e nunca expostas ao frontend.
         </p>
@@ -1398,8 +1460,8 @@ function AISettingsTab({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* Provider */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700">Provedor de IA</h3>
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-cloud-white">Provedor de IA</h3>
           <div className="grid grid-cols-2 gap-3">
             {(["anthropic", "openai"] as const).map((p) => (
               <button
@@ -1408,16 +1470,16 @@ function AISettingsTab({
                 onClick={() => handleProviderChange(p)}
                 className={`flex items-center gap-3 rounded-xl border-2 p-4 text-left transition-colors ${
                   provider === p
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    ? "border-cyan-ia bg-tech-blue/20"
+                    : "border-app-border hover:border-app-border-accent"
                 }`}
               >
                 <span className="text-2xl">{p === "anthropic" ? "🟣" : "🟢"}</span>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
+                  <p className="text-sm font-semibold text-cloud-white">
                     {p === "anthropic" ? "Anthropic" : "OpenAI"}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-cloud-white/50">
                     {p === "anthropic" ? "Claude" : "ChatGPT"}
                   </p>
                 </div>
@@ -1427,16 +1489,16 @@ function AISettingsTab({
         </div>
 
         {/* Model */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
-          <h3 className="text-sm font-semibold text-gray-700">Modelo</h3>
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-semibold text-cloud-white">Modelo</h3>
           <div className="space-y-2">
             {models.map((m) => (
               <label
                 key={m.value}
                 className={`flex cursor-pointer items-center gap-3 rounded-lg border-2 px-4 py-3 transition-colors ${
                   model === m.value
-                    ? "border-indigo-500 bg-indigo-50"
-                    : "border-gray-200 hover:border-gray-300"
+                    ? "border-cyan-ia bg-tech-blue/20"
+                    : "border-app-border hover:border-app-border-accent"
                 }`}
               >
                 <input
@@ -1445,11 +1507,11 @@ function AISettingsTab({
                   value={m.value}
                   checked={model === m.value}
                   onChange={() => setModel(m.value)}
-                  className="text-indigo-600 focus:ring-indigo-500"
+                  className="text-cyan-ia focus:ring-cyan-ia"
                 />
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{m.label}</p>
-                  <p className="text-xs text-gray-400 font-mono">{m.value}</p>
+                  <p className="text-sm font-medium text-cloud-white">{m.label}</p>
+                  <p className="text-xs text-cloud-white/40 font-mono">{m.value}</p>
                 </div>
               </label>
             ))}
@@ -1459,23 +1521,23 @@ function AISettingsTab({
                 value={customModel}
                 onChange={(e) => setCustomModel(e.target.value)}
                 placeholder="ex: MiniMax-Text-01, mistralai/Mistral-7B-v0.1..."
-                className="mt-2 w-full rounded-lg border border-indigo-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                className="mt-2 w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
               />
             )}
           </div>
         </div>
 
         {/* API Keys */}
-        <div className="rounded-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-          <h3 className="text-sm font-semibold text-gray-700">Chaves de API</h3>
-          <p className="text-xs text-gray-500">
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-cloud-white">Chaves de API</h3>
+          <p className="text-xs text-cloud-white/50">
             Deixe em branco para manter a chave atual. As chaves são armazenadas com segurança no
             Firestore e nunca enviadas ao browser.
           </p>
 
           {/* Anthropic Key */}
           <div>
-            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-700">
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
               <span className="text-base">🟣</span> Chave Anthropic
               {initialSettings.anthropicApiKeySet && (
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
@@ -1484,7 +1546,7 @@ function AISettingsTab({
               )}
             </label>
             {initialSettings.anthropicApiKeySet && (
-              <p className="mb-1.5 font-mono text-xs text-gray-400">
+              <p className="mb-1.5 font-mono text-xs text-cloud-white/40">
                 {initialSettings.anthropicApiKeyMasked}
               </p>
             )}
@@ -1497,13 +1559,13 @@ function AISettingsTab({
                   ? "Nova chave (deixe vazio para manter)"
                   : "sk-ant-..."
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
 
           {/* OpenAI Key */}
           <div>
-            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-gray-700">
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
               <span className="text-base">🟢</span> Chave OpenAI
               {initialSettings.openaiApiKeySet && (
                 <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
@@ -1512,7 +1574,7 @@ function AISettingsTab({
               )}
             </label>
             {initialSettings.openaiApiKeySet && (
-              <p className="mb-1.5 font-mono text-xs text-gray-400">
+              <p className="mb-1.5 font-mono text-xs text-cloud-white/40">
                 {initialSettings.openaiApiKeyMasked}
               </p>
             )}
@@ -1525,16 +1587,16 @@ function AISettingsTab({
                   ? "Nova chave (deixe vazio para manter)"
                   : "sk-..."
               }
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
 
           {/* OpenAI-compatible Base URL */}
           <div>
-            <label className="mb-1 block text-xs font-medium text-gray-700">
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">
               Base URL (OpenAI-compatible)
             </label>
-            <p className="mb-1.5 text-xs text-gray-400">
+            <p className="mb-1.5 text-xs text-cloud-white/40">
               Deixe vazio para usar a API padrão da OpenAI. Use para gateways compatíveis como OpenCode Zen, MiniMax, Together, etc.
             </p>
             <input
@@ -1542,7 +1604,7 @@ function AISettingsTab({
               value={openaiBaseUrl}
               onChange={(e) => setOpenaiBaseUrl(e.target.value)}
               placeholder="https://opencode.ai/zen/v1"
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
             />
           </div>
         </div>
@@ -1552,7 +1614,7 @@ function AISettingsTab({
           <button
             type="submit"
             disabled={saving}
-            className="rounded-lg bg-indigo-600 px-6 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
           >
             {saving ? "Salvando..." : "Salvar configurações"}
           </button>
@@ -1568,15 +1630,15 @@ function AISettingsTab({
         </div>
 
         {/* Current config summary */}
-        <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-xs text-gray-500 space-y-1">
+        <div className="rounded-lg bg-midnight-blue border border-app-border px-4 py-3 text-xs text-cloud-white/50 space-y-1">
           <p>
-            <span className="font-medium text-gray-700">Configuração ativa:</span>{" "}
+            <span className="font-medium text-cloud-white/70">Configuração ativa:</span>{" "}
             {initialSettings.provider === "openai" ? "OpenAI" : "Anthropic"} /{" "}
             <span className="font-mono">{initialSettings.model}</span>
           </p>
           {initialSettings.provider === "openai" && initialSettings.openaiBaseUrl && (
             <p>
-              <span className="font-medium text-gray-700">Base URL:</span>{" "}
+              <span className="font-medium text-cloud-white/70">Base URL:</span>{" "}
               <span className="font-mono">{initialSettings.openaiBaseUrl}</span>
             </p>
           )}
@@ -1592,6 +1654,185 @@ function AISettingsTab({
   );
 }
 
+function StripeSettingsTab({
+  initialSettings,
+  onSave,
+}: {
+  initialSettings: StripeSettingsData;
+  onSave: () => void;
+}) {
+  const [publishableKey, setPublishableKey] = useState(initialSettings.publishableKey);
+  const [secretKey, setSecretKey] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [priceId, setPriceId] = useState(initialSettings.priceId);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveMsg(null);
+
+    const payload: Record<string, string> = {
+      publishableKey: publishableKey.trim(),
+      priceId: priceId.trim(),
+    };
+    if (secretKey.trim()) payload.secretKey = secretKey.trim();
+    if (webhookSecret.trim()) payload.webhookSecret = webhookSecret.trim();
+
+    const res = await fetch("/api/admin/settings?section=stripe", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setSaving(false);
+    if (res.ok) {
+      setSaveMsg("Configurações Stripe salvas com sucesso!");
+      setSecretKey("");
+      setWebhookSecret("");
+      onSave();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setSaveMsg(`Erro: ${err.error || "Falha ao salvar"}`);
+    }
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-6">
+        <h2 className="font-semibold text-cloud-white">Configurações do Stripe</h2>
+        <p className="mt-1 text-sm text-cloud-white/50">
+          Credenciais da sua conta Stripe para processar pagamentos e assinaturas.
+          As chaves secretas são armazenadas com segurança no Firestore e nunca expostas ao browser.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Chaves de API */}
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-cloud-white">Chaves de API</h3>
+          <p className="text-xs text-cloud-white/50">
+            Deixe os campos de chave secreta em branco para manter o valor atual.
+          </p>
+
+          {/* Publishable Key */}
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
+              Chave Publicável (pk_...)
+              {initialSettings.publishableKeySet && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                  Configurada
+                </span>
+              )}
+            </label>
+            <input
+              type="text"
+              value={publishableKey}
+              onChange={(e) => setPublishableKey(e.target.value)}
+              placeholder="pk_live_..."
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+
+          {/* Secret Key */}
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
+              Chave Secreta (sk_...)
+              {initialSettings.secretKeySet && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                  Configurada
+                </span>
+              )}
+            </label>
+            {initialSettings.secretKeySet && (
+              <p className="mb-1.5 font-mono text-xs text-cloud-white/40">{initialSettings.secretKeyMasked}</p>
+            )}
+            <input
+              type="password"
+              value={secretKey}
+              onChange={(e) => setSecretKey(e.target.value)}
+              placeholder={initialSettings.secretKeySet ? "Nova chave (deixe vazio para manter)" : "sk_live_..."}
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+
+          {/* Webhook Secret */}
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
+              Webhook Secret (whsec_...)
+              {initialSettings.webhookSecretSet && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                  Configurado
+                </span>
+              )}
+            </label>
+            {initialSettings.webhookSecretSet && (
+              <p className="mb-1.5 font-mono text-xs text-cloud-white/40">{initialSettings.webhookSecretMasked}</p>
+            )}
+            <input
+              type="password"
+              value={webhookSecret}
+              onChange={(e) => setWebhookSecret(e.target.value)}
+              placeholder={initialSettings.webhookSecretSet ? "Novo secret (deixe vazio para manter)" : "whsec_..."}
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Plano */}
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-3">
+          <h3 className="text-sm font-semibold text-cloud-white">Plano de Assinatura</h3>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">
+              Price ID do Stripe (price_...)
+            </label>
+            <p className="mb-1.5 text-xs text-cloud-white/40">
+              ID do preço criado no painel Stripe para o plano mensal.
+            </p>
+            <input
+              type="text"
+              value={priceId}
+              onChange={(e) => setPriceId(e.target.value)}
+              placeholder="price_..."
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Save */}
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar configurações Stripe"}
+          </button>
+          {saveMsg && (
+            <p className={`text-sm ${saveMsg.startsWith("Erro") ? "text-red-600" : "text-green-600"}`}>
+              {saveMsg}
+            </p>
+          )}
+        </div>
+
+        {/* Status resumo */}
+        {(initialSettings.secretKeySet || initialSettings.priceId) && (
+          <div className="rounded-lg bg-midnight-blue border border-app-border px-4 py-3 text-xs text-cloud-white/50 space-y-1">
+            <p className="font-medium text-cloud-white/70">Status atual</p>
+            <p>Chave secreta: {initialSettings.secretKeySet ? "✓ Configurada" : "✗ Não configurada"}</p>
+            <p>Webhook secret: {initialSettings.webhookSecretSet ? "✓ Configurado" : "✗ Não configurado"}</p>
+            <p>Price ID: {initialSettings.priceId ? <span className="font-mono">{initialSettings.priceId}</span> : "✗ Não configurado"}</p>
+            {initialSettings.updatedAt && (
+              <p>Atualizado em: {new Date(initialSettings.updatedAt).toLocaleString("pt-BR")}</p>
+            )}
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
 const SUB_STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Ativo",
   INACTIVE: "Inativo",
@@ -1601,7 +1842,7 @@ const SUB_STATUS_LABELS: Record<string, string> = {
 
 const SUB_STATUS_COLORS: Record<string, string> = {
   ACTIVE: "bg-green-100 text-green-700",
-  INACTIVE: "bg-gray-100 text-gray-500",
+  INACTIVE: "bg-app-chip text-cloud-white/50",
   CANCELLED: "bg-red-100 text-red-600",
   PAST_DUE: "bg-yellow-100 text-yellow-700",
 };
@@ -1706,7 +1947,7 @@ function MembersTab({
   return (
     <div>
       <div className="mb-6 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-semibold text-cloud-white">
           Membros ({members.length})
         </h2>
         <input
@@ -1714,13 +1955,13 @@ function MembersTab({
           placeholder="Buscar por nome ou e-mail..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-72 rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+          className="w-72 rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
+      <div className="overflow-x-auto rounded-xl border border-app-border">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 text-xs text-gray-500 uppercase tracking-wide">
+          <thead className="bg-midnight-blue text-xs text-cloud-white/50 uppercase tracking-wide">
             <tr>
               <th className="px-4 py-3 text-left">Membro</th>
               <th className="px-4 py-3 text-left">Perfil</th>
@@ -1733,14 +1974,14 @@ function MembersTab({
           <tbody className="divide-y divide-gray-100">
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-8 text-center text-cloud-white/40">
                   Nenhum membro encontrado.
                 </td>
               </tr>
             )}
             {filtered.map((member) => (
               <React.Fragment key={member.uid}>
-                <tr className="hover:bg-gray-50 transition-colors">
+                <tr className="hover:bg-midnight-blue transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       {member.avatarUrl ? (
@@ -1751,13 +1992,13 @@ function MembersTab({
                           className="h-8 w-8 rounded-full object-cover"
                         />
                       ) : (
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-semibold text-indigo-600">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-tech-blue/30 text-xs font-semibold text-cyan-ia">
                           {(member.name || member.email).charAt(0).toUpperCase()}
                         </div>
                       )}
                       <div>
-                        <p className="font-medium text-gray-900">{member.name || "—"}</p>
-                        <p className="text-xs text-gray-400">{member.email}</p>
+                        <p className="font-medium text-cloud-white">{member.name || "—"}</p>
+                        <p className="text-xs text-cloud-white/40">{member.email}</p>
                       </div>
                     </div>
                   </td>
@@ -1776,21 +2017,21 @@ function MembersTab({
                     {member.subscription?.status ? (
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          SUB_STATUS_COLORS[member.subscription.status] || "bg-gray-100 text-gray-500"
+                          SUB_STATUS_COLORS[member.subscription.status] || "bg-app-chip text-cloud-white/50"
                         }`}
                       >
                         {SUB_STATUS_LABELS[member.subscription.status] || member.subscription.status}
                       </span>
                     ) : (
-                      <span className="text-gray-300 text-xs">—</span>
+                      <span className="text-cloud-white/30 text-xs">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">
+                  <td className="px-4 py-3 text-cloud-white/50 text-xs">
                     {member.subscription?.currentPeriodEnd
                       ? new Date(member.subscription.currentPeriodEnd).toLocaleDateString("pt-BR")
                       : "—"}
                   </td>
-                  <td className="px-4 py-3 text-gray-400 text-xs">
+                  <td className="px-4 py-3 text-cloud-white/40 text-xs">
                     {new Date(member.createdAt).toLocaleDateString("pt-BR")}
                   </td>
                   <td className="px-4 py-3 text-right">
@@ -1798,7 +2039,7 @@ function MembersTab({
                       onClick={() =>
                         editingUid === member.uid ? setEditingUid(null) : handleEdit(member)
                       }
-                      className="rounded-lg border border-gray-200 px-3 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100 transition-colors"
+                      className="rounded-lg border border-app-border px-3 py-1 text-xs font-medium text-cloud-white/60 hover:bg-midnight-blue transition-colors"
                     >
                       {editingUid === member.uid ? "Fechar" : "Editar"}
                     </button>
@@ -1806,10 +2047,10 @@ function MembersTab({
                 </tr>
                 {editingUid === member.uid && (
                   <tr key={`${member.uid}-edit`}>
-                    <td colSpan={6} className="bg-indigo-50 px-6 py-5">
+                    <td colSpan={6} className="bg-midnight-blue px-6 py-5">
                       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Perfil de acesso
                           </label>
                           <select
@@ -1817,7 +2058,7 @@ function MembersTab({
                             onChange={(e) =>
                               setForm((f) => ({ ...f, role: e.target.value as "MEMBER" | "ADMIN" }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           >
                             <option value="MEMBER">Membro</option>
                             <option value="ADMIN">Admin</option>
@@ -1825,7 +2066,7 @@ function MembersTab({
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Status da assinatura
                           </label>
                           <select
@@ -1840,7 +2081,7 @@ function MembersTab({
                                   | "PAST_DUE",
                               }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           >
                             <option value="ACTIVE">Ativo</option>
                             <option value="INACTIVE">Inativo</option>
@@ -1850,7 +2091,7 @@ function MembersTab({
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Validade da assinatura
                           </label>
                           <input
@@ -1859,12 +2100,12 @@ function MembersTab({
                             onChange={(e) =>
                               setForm((f) => ({ ...f, subscriptionPeriodEnd: e.target.value }))
                             }
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Stripe Customer ID
                           </label>
                           <input
@@ -1874,12 +2115,12 @@ function MembersTab({
                               setForm((f) => ({ ...f, stripeCustomerId: e.target.value }))
                             }
                             placeholder="cus_..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Stripe Subscription ID
                           </label>
                           <input
@@ -1889,12 +2130,12 @@ function MembersTab({
                               setForm((f) => ({ ...f, stripeSubscriptionId: e.target.value }))
                             }
                             placeholder="sub_..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           />
                         </div>
 
                         <div>
-                          <label className="mb-1 block text-xs font-medium text-gray-700">
+                          <label className="mb-1 block text-xs font-medium text-cloud-white/70">
                             Stripe Price ID
                           </label>
                           <input
@@ -1904,7 +2145,7 @@ function MembersTab({
                               setForm((f) => ({ ...f, stripePriceId: e.target.value }))
                             }
                             placeholder="price_..."
-                            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
                           />
                         </div>
                       </div>
@@ -1913,13 +2154,13 @@ function MembersTab({
                         <button
                           onClick={() => handleSave(member.uid)}
                           disabled={saving}
-                          className="rounded-lg bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                          className="rounded-lg bg-tech-blue px-5 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
                         >
                           {saving ? "Salvando..." : "Salvar alterações"}
                         </button>
                         <button
                           onClick={() => setEditingUid(null)}
-                          className="rounded-lg border border-gray-300 px-5 py-2 text-sm text-gray-600 hover:bg-gray-100"
+                          className="rounded-lg border border-app-border px-5 py-2 text-sm text-cloud-white/60 hover:bg-midnight-blue"
                         >
                           Cancelar
                         </button>

@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAuth } from "@/lib/server-auth";
-import { getUserByUid, getAISettings, updateAISettings, AISettings } from "@/lib/firestore";
+import {
+  getUserByUid,
+  getAISettings,
+  updateAISettings,
+  AISettings,
+  getStripeSettings,
+  updateStripeSettings,
+  StripeSettings,
+} from "@/lib/firestore";
 
 async function requireAdmin() {
   const { userId } = await getServerAuth();
@@ -14,10 +22,30 @@ function maskKey(key: string): string {
   return "••••••••••••" + key.slice(-4);
 }
 
-export async function GET() {
+// ── AI Settings ─────────────────────────────────────────────────────────────
+
+export async function GET(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const { searchParams } = new URL(req.url);
+  const section = searchParams.get("section");
+
+  if (section === "stripe") {
+    const settings = await getStripeSettings();
+    return NextResponse.json({
+      publishableKey: settings.publishableKey,
+      publishableKeySet: settings.publishableKey.length > 0,
+      secretKeySet: settings.secretKey.length > 0,
+      secretKeyMasked: maskKey(settings.secretKey),
+      webhookSecretSet: settings.webhookSecret.length > 0,
+      webhookSecretMasked: maskKey(settings.webhookSecret),
+      priceId: settings.priceId,
+      updatedAt: settings.updatedAt,
+    });
+  }
+
+  // Default: AI settings
   const settings = await getAISettings();
 
   // Never send actual keys to the client — only masked versions
@@ -37,17 +65,46 @@ export async function PATCH(req: NextRequest) {
   const admin = await requireAdmin();
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const body: Partial<AISettings> = await req.json();
+  const { searchParams } = new URL(req.url);
+  const section = searchParams.get("section");
 
-  // Only allow safe fields — never let client set arbitrary data
+  if (section === "stripe") {
+    const body: Partial<StripeSettings> = await req.json();
+    const allowed: Partial<StripeSettings> = {};
+
+    // publishableKey é pública — pode ser atualizada diretamente
+    if (typeof body.publishableKey === "string") {
+      allowed.publishableKey = body.publishableKey.trim();
+    }
+    // Chaves sensíveis: só atualiza se um valor não-vazio for enviado
+    if (typeof body.secretKey === "string" && body.secretKey.trim()) {
+      allowed.secretKey = body.secretKey.trim();
+    }
+    if (typeof body.webhookSecret === "string" && body.webhookSecret.trim()) {
+      allowed.webhookSecret = body.webhookSecret.trim();
+    }
+    if (typeof body.priceId === "string") {
+      allowed.priceId = body.priceId.trim();
+    }
+
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+
+    await updateStripeSettings(allowed);
+    return NextResponse.json({ success: true });
+  }
+
+  // Default: AI settings
+  const body: Partial<AISettings> = await req.json();
   const allowed: Partial<AISettings> = {};
+
   if (body.provider === "anthropic" || body.provider === "openai") {
     allowed.provider = body.provider;
   }
   if (typeof body.model === "string" && body.model.trim()) {
     allowed.model = body.model.trim();
   }
-  // Only update keys if a non-empty value is provided (empty string = keep existing)
   if (typeof body.anthropicApiKey === "string" && body.anthropicApiKey.trim()) {
     allowed.anthropicApiKey = body.anthropicApiKey.trim();
   }

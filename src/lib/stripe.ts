@@ -1,37 +1,39 @@
 import Stripe from "stripe";
+import { getStripeSettings } from "@/lib/firestore";
 
-let stripeInstance: Stripe | undefined;
-
-function getStripeSecretKey(): string {
-  // 1. Environment variable (local dev, .env.local)
-  if (process.env.STRIPE_SECRET_KEY) {
-    return process.env.STRIPE_SECRET_KEY;
-  }
-
-  // 2. Firebase Functions config (production)
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const functions = require("firebase-functions");
-    const key = functions.config()?.stripe?.secret;
-    if (key) return key;
-  } catch {
-    // firebase-functions not available (local dev or SSR)
-  }
-
-  throw new Error(
-    'STRIPE_SECRET_KEY is not set. Set it via env var or `firebase functions:config:set stripe.secret="sk_..."`'
-  );
+export interface StripeConfig {
+  stripe: Stripe;
+  priceId: string;
+  webhookSecret: string;
+  publishableKey: string;
 }
 
-export const getStripe = (): Stripe => {
-  if (!stripeInstance) {
-    stripeInstance = new Stripe(getStripeSecretKey());
-  }
-  return stripeInstance;
-};
+// Cache para não bater no Firestore em toda requisição
+let cached: StripeConfig | null = null;
+let cachedAt = 0;
+const CACHE_TTL_MS = 60_000; // 60 segundos
 
-export const stripe = new Proxy({} as Stripe, {
-  get(_target, prop) {
-    return getStripe()[prop as keyof Stripe];
-  },
-});
+export async function getStripeConfig(): Promise<StripeConfig> {
+  const now = Date.now();
+  if (cached && now - cachedAt < CACHE_TTL_MS) {
+    return cached;
+  }
+
+  const settings = await getStripeSettings();
+
+  if (!settings.secretKey) {
+    throw new Error("Stripe secret key não configurada. Configure em Admin > Configurações.");
+  }
+
+  const stripeInstance = new Stripe(settings.secretKey, { apiVersion: "2026-02-25.clover" });
+
+  cached = {
+    stripe: stripeInstance,
+    priceId: settings.priceId,
+    webhookSecret: settings.webhookSecret,
+    publishableKey: settings.publishableKey,
+  };
+  cachedAt = now;
+
+  return cached;
+}

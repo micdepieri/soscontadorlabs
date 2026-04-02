@@ -94,14 +94,14 @@ function CommentItem({
     const parts = content.split(/(@\S+)/g);
     return parts.map((part, i) => {
       if (part.startsWith("@")) {
-        return <span key={i} className="font-semibold text-indigo-600 cursor-pointer hover:underline">{part}</span>;
+        return <span key={i} className="font-semibold text-cyan-ia cursor-pointer hover:underline">{part}</span>;
       }
       return part;
     });
   };
 
   return (
-    <div className={`flex gap-3 group ${depth > 0 ? "mt-4 ml-8 border-l-2 border-gray-100 pl-4" : ""}`}>
+    <div className={`flex gap-3 group ${depth > 0 ? "mt-4 ml-8 border-l-2 border-app-border pl-4" : ""}`}>
       <div className="shrink-0 pt-1">
         {comment.authorAvatarUrl ? (
           <Image
@@ -112,23 +112,23 @@ function CommentItem({
             className="rounded-full ring-2 ring-white shadow-sm"
           />
         ) : (
-          <div className={`flex ${depth > 0 ? "h-6 w-6" : "h-9 w-9"} items-center justify-center rounded-full bg-indigo-100 text-[10px] font-bold text-indigo-700`}>
+          <div className={`flex ${depth > 0 ? "h-6 w-6" : "h-9 w-9"} items-center justify-center rounded-full bg-tech-blue/30 text-[10px] font-bold text-cyan-ia`}>
             {(comment.authorName || "U").charAt(0).toUpperCase()}
           </div>
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="rounded-2xl bg-white border border-gray-100 p-4 shadow-xs transition-shadow hover:shadow-sm">
+        <div className="rounded-2xl bg-midnight-blue border border-app-border p-4 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-sm font-bold text-gray-900">{comment.authorName || "Membro"}</p>
-            <span className="text-[10px] text-gray-400 font-medium uppercase">{formatDate(comment.createdAt)}</span>
+            <p className="text-sm font-bold text-cloud-white">{comment.authorName || "Membro"}</p>
+            <span className="text-[10px] text-cloud-white/40 font-medium uppercase">{formatDate(comment.createdAt)}</span>
           </div>
-          <p className="text-sm break-words whitespace-pre-wrap text-gray-700 leading-relaxed">
+          <p className="text-sm break-words whitespace-pre-wrap text-cloud-white/80 leading-relaxed">
             {renderContent(comment.content)}
           </p>
           
           {comment.imageUrl && (
-            <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 bg-gray-50">
+            <div className="mt-4 overflow-hidden rounded-xl border border-app-border bg-deep-navy">
               <img 
                 src={comment.imageUrl} 
                 alt="Anexo" 
@@ -143,11 +143,11 @@ function CommentItem({
             onClick={handleLike}
             disabled={!currentUserId}
             className={`flex items-center gap-1.5 text-xs transition-all active:scale-95 ${
-              likedByMe ? "font-bold text-indigo-600" : "text-gray-500 hover:text-indigo-600"
+              likedByMe ? "font-bold text-cyan-ia" : "text-cloud-white/50 hover:text-cyan-ia"
             } disabled:opacity-40`}
           >
             <svg
-              className={`h-4 w-4 ${likedByMe ? "fill-indigo-600" : "fill-none"}`}
+              className={`h-4 w-4 ${likedByMe ? "fill-cyan-ia" : "fill-none"}`}
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
@@ -164,7 +164,7 @@ function CommentItem({
           {currentUserId && depth === 0 && (
             <button
               onClick={() => setReplying(!replying)}
-              className="text-xs font-medium text-gray-500 transition-colors hover:text-indigo-600"
+              className="text-xs font-medium text-cloud-white/50 transition-colors hover:text-cyan-ia"
             >
               Responder
             </button>
@@ -178,20 +178,20 @@ function CommentItem({
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Escreva uma resposta..."
-              className="flex-1 rounded-xl border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none focus:bg-white transition-all"
+              className="flex-1 rounded-xl border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none transition-all"
               autoFocus
             />
             <button
               type="submit"
               disabled={isPending || !replyText.trim()}
-              className="rounded-xl bg-indigo-600 px-5 py-2 text-xs font-bold text-white transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+              className="rounded-xl bg-tech-blue px-5 py-2 text-xs font-bold text-white transition-all hover:bg-tech-blue/80 active:scale-95 disabled:opacity-50"
             >
               {isPending ? "..." : "Enviar"}
             </button>
             <button
               type="button"
               onClick={() => setReplying(false)}
-              className="rounded-xl px-4 py-2 text-xs font-medium text-gray-500 hover:bg-gray-100 transition-colors"
+              className="rounded-xl px-4 py-2 text-xs font-medium text-cloud-white/50 hover:bg-midnight-blue transition-colors"
             >
               Cancelar
             </button>
@@ -314,8 +314,8 @@ export default function CommentsSection({
 
   return (
     <div className="relative">
-      <h2 className="mb-6 flex items-center gap-2 text-lg font-bold text-gray-900">
-        <svg className="h-5 w-5 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <h2 className="mb-6 flex items-center gap-2 text-lg font-bold text-cloud-white">
+        <svg className="h-5 w-5 text-cyan-ia" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
         </svg>
         Comunidade ({comments.length})
@@ -323,7 +323,7 @@ export default function CommentsSection({
 
       {isLoggedIn ? (
         <form onSubmit={handleSubmit} className="mb-10 space-y-3">
-          <div className="relative rounded-2xl border border-gray-200 bg-white p-3 focus-within:ring-2 focus-within:ring-indigo-500 transition-all shadow-xs">
+          <div className="relative rounded-2xl border border-app-border bg-midnight-blue p-3 focus-within:ring-2 focus-within:ring-cyan-ia transition-all shadow-xs">
             <textarea
               value={newComment}
               onChange={handleInputChange}
@@ -334,15 +334,15 @@ export default function CommentsSection({
             
             {/* Mention Suggestions Popup */}
             {showMentions && mentionUsers.length > 0 && (
-              <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-gray-100 bg-white p-2 shadow-xl z-50">
+              <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-app-border bg-midnight-blue p-2 shadow-xl z-50">
                 {mentionUsers.map(user => (
                   <button
                     key={user.uid}
                     type="button"
                     onClick={() => insertMention(user)}
-                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-gray-50 transition-colors"
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-left hover:bg-deep-navy transition-colors"
                   >
-                    <div className="h-6 w-6 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] font-bold text-indigo-700">
+                    <div className="h-6 w-6 rounded-full bg-tech-blue/30 flex items-center justify-center text-[10px] font-bold text-cyan-ia">
                       {user.avatarUrl ? <img src={user.avatarUrl} className="h-full w-full rounded-full" /> : (user.name || "U")[0]}
                     </div>
                     <span>{user.name || user.email}</span>
@@ -353,7 +353,7 @@ export default function CommentsSection({
 
             {imagePreview && (
               <div className="relative mt-2 inline-block">
-                <img src={imagePreview} className="h-24 w-24 rounded-lg object-cover border border-gray-200" />
+                <img src={imagePreview} className="h-24 w-24 rounded-lg object-cover border border-app-border" />
                 <button 
                   onClick={() => { setImage(null); setImagePreview(null); }}
                   className="absolute -right-2 -top-2 rounded-full bg-red-500 p-1 text-white shadow-md hover:bg-red-600"
@@ -363,12 +363,12 @@ export default function CommentsSection({
               </div>
             )}
 
-            <div className="mt-2 flex items-center justify-between border-t border-gray-50 pt-2 px-1">
+            <div className="mt-2 flex items-center justify-between border-t border-app-border pt-2 px-1">
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-indigo-600"
+                  className="rounded-lg p-2 text-cloud-white/40 transition-colors hover:bg-midnight-blue hover:text-cyan-ia"
                   title="Anexar imagem"
                 >
                   <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -379,7 +379,7 @@ export default function CommentsSection({
               <button
                 type="submit"
                 disabled={isPending}
-                className="rounded-xl bg-indigo-600 px-6 py-2 text-sm font-bold text-white shadow-lg shadow-indigo-200 transition-all hover:bg-indigo-700 active:scale-95 disabled:opacity-50"
+                className="rounded-xl bg-tech-blue px-6 py-2 text-sm font-bold text-white transition-all hover:bg-tech-blue/80 active:scale-95 disabled:opacity-50"
               >
                 {isPending ? "Enviando..." : "Compartilhar"}
               </button>
@@ -394,8 +394,8 @@ export default function CommentsSection({
           />
         </form>
       ) : (
-        <div className="mb-10 rounded-2xl bg-indigo-50 p-6 text-center shadow-xs">
-          <p className="text-sm font-medium text-indigo-900">
+        <div className="mb-10 rounded-2xl bg-midnight-blue border border-app-border p-6 text-center shadow-xs">
+          <p className="text-sm font-medium text-cloud-white">
             Entre na conversa! <Link href="/sign-in" className="font-bold underline">Faça login</Link> para compartilhar sua experiência.
           </p>
         </div>
@@ -403,12 +403,12 @@ export default function CommentsSection({
 
       {comments.length === 0 ? (
         <div className="flex flex-col items-center py-16 text-center animate-in fade-in zoom-in-95">
-          <div className="mb-4 rounded-full bg-gray-50 p-6">
-            <svg className="h-10 w-10 text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="mb-4 rounded-full bg-midnight-blue p-6">
+            <svg className="h-10 w-10 text-cloud-white/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
             </svg>
           </div>
-          <p className="text-sm font-medium text-gray-400">Silêncio no momento...<br/>Seja o primeiro a puxar o assunto!</p>
+          <p className="text-sm font-medium text-cloud-white/40">Silêncio no momento...<br/>Seja o primeiro a puxar o assunto!</p>
         </div>
       ) : (
         <div className="space-y-6">

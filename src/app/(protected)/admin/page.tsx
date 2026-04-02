@@ -7,6 +7,7 @@ import {
   getContentRequests,
   getPosts,
   getAISettings,
+  getStripeSettings,
   getUsers,
   getAllSubscriptions,
   getAllContentStats,
@@ -26,7 +27,7 @@ export default async function AdminPage() {
   const user = await getUserByUid(userId);
   if (!user || user.role !== "ADMIN") redirect("/videos");
 
-  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, allUsers, allSubscriptions, ratingStats] =
+  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, rawStripeSettings, allUsers, allSubscriptions, ratingStats] =
     await Promise.all([
       getVideos({ publishedOnly: false }),
       getMaterials({ publishedOnly: false }),
@@ -34,6 +35,7 @@ export default async function AdminPage() {
       getContentRequests(),
       getPosts({ publishedOnly: false }),
       getAISettings(),
+      getStripeSettings(),
       getUsers(),
       getAllSubscriptions(),
       getAllContentStats(),
@@ -89,6 +91,17 @@ export default async function AdminPage() {
     return "••••••••••••" + key.slice(-4);
   }
 
+  const stripeSettings = {
+    publishableKey: rawStripeSettings.publishableKey,
+    publishableKeySet: rawStripeSettings.publishableKey.length > 0,
+    secretKeySet: rawStripeSettings.secretKey.length > 0,
+    secretKeyMasked: maskKey(rawStripeSettings.secretKey),
+    webhookSecretSet: rawStripeSettings.webhookSecret.length > 0,
+    webhookSecretMasked: maskKey(rawStripeSettings.webhookSecret),
+    priceId: rawStripeSettings.priceId,
+    updatedAt: rawStripeSettings.updatedAt,
+  };
+
   const aiSettings = {
     provider: rawAISettings.provider,
     model: rawAISettings.model,
@@ -103,8 +116,8 @@ export default async function AdminPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Painel Admin</h1>
-        <p className="mt-2 text-gray-600">Gerencie vídeos, materiais, artigos e categorias.</p>
+        <h1 className="text-3xl font-bold text-cloud-white">Painel Admin</h1>
+        <p className="mt-2 text-cloud-white/60">Gerencie vídeos, materiais, artigos e categorias.</p>
       </div>
       <AdminTabs
         videos={videos}
@@ -113,6 +126,7 @@ export default async function AdminPage() {
         contentRequests={contentRequests}
         posts={posts}
         aiSettings={aiSettings}
+        stripeSettings={stripeSettings}
         members={members}
         ratingStats={ratingStats}
       />

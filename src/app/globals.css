@@ -1,5 +1,6 @@
 @import "tailwindcss";
 
+/* ── Dark theme (default) ── */
 :root {
   --background: #0B1C2E;
   --foreground: #E8F4FD;
@@ -9,6 +10,33 @@
   --cyan-ia: #00C8E0;
   --brass-gold: #C9A456;
   --cloud-white: #E8F4FD;
+
+  /* Semantic tokens for arbitrary-value classes */
+  --app-border: #1e3a5f;
+  --app-border-accent: #2a5080;
+  --app-chip: #1e3a5f;
+  --app-chip-accent: #2a5080;
+  --app-input-bg: #112237;
+  --placeholder-color: #4a7090;
+  --input-border: #1e3a5f;
+}
+
+/* ── Light theme overrides ── */
+html.light {
+  --background: #f0f4f8;
+  --foreground: #1e293b;
+  --deep-navy: #f0f4f8;
+  --midnight-blue: #ffffff;
+  --cloud-white: #1e293b;
+  --cyan-ia: #0A4FA6;
+
+  --app-border: #e2e8f0;
+  --app-border-accent: #cbd5e1;
+  --app-chip: #e2e8f0;
+  --app-chip-accent: #cbd5e1;
+  --app-input-bg: #ffffff;
+  --placeholder-color: #94a3b8;
+  --input-border: #cbd5e1;
 }
 
 @theme inline {
@@ -20,6 +48,14 @@
   --color-cyan-ia: var(--cyan-ia);
   --color-brass-gold: var(--brass-gold);
   --color-cloud-white: var(--cloud-white);
+
+  /* Semantic token classes */
+  --color-app-border: var(--app-border);
+  --color-app-border-accent: var(--app-border-accent);
+  --color-app-chip: var(--app-chip);
+  --color-app-chip-accent: var(--app-chip-accent);
+  --color-app-input-bg: var(--app-input-bg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -32,18 +68,43 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Smooth scrolling */
 html {
   scroll-behavior: smooth;
 }
 
-/* Focus visible outline for accessibility */
 :focus-visible {
-  outline: 2px solid #6366f1;
+  outline: 2px solid var(--cyan-ia);
   outline-offset: 2px;
 }
 
-/* Line clamp utilities */
+/* ── Form elements – theme-aware ── */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"]),
+textarea,
+select {
+  background-color: var(--app-input-bg);
+  color: var(--foreground);
+  border-color: var(--input-border);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"])::placeholder,
+textarea::placeholder {
+  color: var(--placeholder-color);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):not([type="submit"]):not([type="button"]):not([type="reset"]):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--cyan-ia);
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan-ia) 18%, transparent);
+}
+
+select option {
+  background-color: var(--midnight-blue);
+  color: var(--foreground);
+}
+
+/* ── Line clamp utilities ── */
 .line-clamp-1 {
   overflow: hidden;
   display: -webkit-box;

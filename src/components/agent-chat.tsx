@@ -240,21 +240,21 @@ export default function AgentChat() {
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
             {msg.role === "assistant" && (
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white text-xs mr-2 mt-0.5">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-tech-blue text-white text-xs mr-2 mt-0.5">
                 IA
               </div>
             )}
             <div
               className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm ${
                 msg.role === "user"
-                  ? "bg-indigo-600 text-white rounded-br-sm"
-                  : "bg-white border border-gray-200 text-gray-800 rounded-bl-sm shadow-sm"
+                  ? "bg-tech-blue text-white rounded-br-sm"
+                  : "bg-midnight-blue border border-app-border text-cloud-white rounded-bl-sm shadow-sm"
               }`}
             >
               {msg.role === "assistant" ? (
                 <div className="space-y-1 leading-relaxed">
                   {msg.content ? renderAssistantContent(msg.content) : (
-                    <span className="inline-flex gap-1 items-center text-gray-400">
+                    <span className="inline-flex gap-1 items-center text-cloud-white/40">
                       <span className="animate-bounce delay-0">.</span>
                       <span className="animate-bounce delay-100">.</span>
                       <span className="animate-bounce delay-200">.</span>
@@ -277,7 +277,7 @@ export default function AgentChat() {
       </div>
 
       {/* Input */}
-      <div className="border-t border-gray-200 bg-white p-4">
+      <div className="border-t border-app-border bg-deep-navy p-4">
         <form onSubmit={sendMessage} className="flex gap-2 items-end">
           <textarea
             ref={textareaRef}
@@ -287,13 +287,13 @@ export default function AgentChat() {
             placeholder="Digite sua dúvida... (Enter para enviar)"
             rows={1}
             disabled={loading}
-            className="flex-1 resize-none rounded-xl border border-gray-300 px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none disabled:opacity-50"
+            className="flex-1 resize-none rounded-xl border border-app-border px-4 py-2.5 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none disabled:opacity-50"
             style={{ maxHeight: "120px", overflowY: "auto" }}
           />
           <button
             type="submit"
             disabled={!input.trim() || loading}
-            className="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            className="shrink-0 flex h-10 w-10 items-center justify-center rounded-xl bg-tech-blue text-white hover:bg-tech-blue/80 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? (
               <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -307,7 +307,7 @@ export default function AgentChat() {
             )}
           </button>
         </form>
-        <p className="mt-1.5 text-center text-[10px] text-gray-400">
+        <p className="mt-1.5 text-center text-[10px] text-cloud-white/40">
           Enter para enviar · Shift+Enter para nova linha
         </p>
       </div>

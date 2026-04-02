@@ -24,6 +24,12 @@ service cloud.firestore {
       allow write: if false; // admin only via server
     }
 
+    // Posts - authenticated users can read
+    match /posts/{postId} {
+      allow read: if request.auth != null;
+      allow write: if false; // admin only via server
+    }
+
     // Comments - authenticated users can read, authors can write
     match /comments/{commentId} {
       allow read: if request.auth != null;
@@ -32,10 +38,28 @@ service cloud.firestore {
       allow delete: if false; // admin only via server
     }
 
+    // Ratings - authenticated users can read and write their own
+    match /ratings/{ratingId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null;
+    }
+
     // Subscriptions - admin only via server
     match /subscriptions/{subId} {
       allow read: if request.auth != null;
       allow write: if false; // admin only via server
+    }
+
+    // Content requests - admin only via server
+    match /content_requests/{reqId} {
+      allow read: if false;
+      allow write: if false;
+    }
+
+    // Settings - admin only via server (never expose to client)
+    match /settings/{docId} {
+      allow read: if false;
+      allow write: if false;
     }
   }
 }

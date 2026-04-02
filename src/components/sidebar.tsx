@@ -41,14 +41,14 @@ export default function Sidebar() {
   const isAdmin = user?.role === "ADMIN";
 
   return (
-    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-gray-200 bg-gray-50 md:flex">
+    <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-app-border bg-midnight-blue md:flex">
       {/* Header / Brand */}
-      <div className="flex h-16 items-center border-b border-gray-200 px-6">
+      <div className="flex h-16 items-center border-b border-app-border px-6">
         <Link href="/videos" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-600 text-white font-bold text-lg">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-tech-blue text-white font-bold text-lg">
             S
           </div>
-          <span className="font-bold text-gray-900 tracking-tight">Comunidade</span>
+          <span className="font-bold text-cloud-white tracking-tight">Comunidade</span>
         </Link>
       </div>
 
@@ -60,8 +60,8 @@ export default function Sidebar() {
             href="/videos"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
               pathname === "/videos"
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,8 +73,8 @@ export default function Sidebar() {
             href="/materiais"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
               pathname === "/materiais"
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -86,8 +86,8 @@ export default function Sidebar() {
             href="/posts"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
               pathname.startsWith("/posts")
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -99,8 +99,8 @@ export default function Sidebar() {
             href="/suporte"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
               pathname === "/suporte"
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,14 +112,14 @@ export default function Sidebar() {
 
         {/* Categories as Channels */}
         <div>
-          <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+          <h3 className="px-3 text-xs font-semibold text-cloud-white/40 uppercase tracking-wider mb-2">
             Canais de Assunto
           </h3>
           <nav className="space-y-0.5">
             {loading ? (
               <div className="px-3 py-2 space-y-2">
-                <div className="h-4 w-3/4 bg-gray-200 animate-pulse rounded" />
-                <div className="h-4 w-1/2 bg-gray-200 animate-pulse rounded" />
+                <div className="h-4 w-3/4 bg-app-chip animate-pulse rounded" />
+                <div className="h-4 w-1/2 bg-app-chip animate-pulse rounded" />
               </div>
             ) : (
               categories.map((cat) => (
@@ -128,11 +128,11 @@ export default function Sidebar() {
                   href={`/videos?categoria=${cat.slug}`}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
                     pathname === "/videos" && cat.slug === new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("categoria")
-                      ? "bg-gray-200 text-gray-900"
-                      : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                      ? "bg-app-chip text-cloud-white"
+                      : "text-cloud-white/50 hover:bg-deep-navy hover:text-cloud-white"
                   }`}
                 >
-                  <span className="text-gray-400 font-normal">#</span>
+                  <span className="text-cloud-white/30 font-normal">#</span>
                   {cat.name}
                 </Link>
               ))
@@ -143,7 +143,7 @@ export default function Sidebar() {
         {/* Admin Section */}
         {isAdmin && (
           <div>
-            <h3 className="px-3 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
+            <h3 className="px-3 text-xs font-semibold text-cloud-white/40 uppercase tracking-wider mb-2">
               Administração
             </h3>
             <nav className="space-y-1">
@@ -151,8 +151,8 @@ export default function Sidebar() {
                 href="/admin"
                 className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                   pathname === "/admin"
-                    ? "bg-indigo-50 text-indigo-700"
-                    : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    ? "bg-tech-blue/20 text-cyan-ia"
+                    : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
                 }`}
               >
                 <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -166,10 +166,10 @@ export default function Sidebar() {
       </div>
 
       {/* User info at bottom */}
-      <div className="border-t border-gray-200 bg-gray-100 p-4">
+      <div className="border-t border-app-border bg-deep-navy p-4">
         {user && (
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white text-xs font-bold uppercase overflow-hidden">
+            <div className="h-8 w-8 rounded-full bg-tech-blue flex items-center justify-center text-white text-xs font-bold uppercase overflow-hidden">
               {user.avatarUrl ? (
                 <img src={user.avatarUrl} alt={user.name} className="h-full w-full object-cover" />
               ) : (
@@ -177,8 +177,8 @@ export default function Sidebar() {
               )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">{user.name || "Usuário"}</p>
-              <p className="text-xs text-gray-500 truncate capitalize">{user.role}</p>
+              <p className="text-sm font-medium text-cloud-white truncate">{user.name || "Usuário"}</p>
+              <p className="text-xs text-cloud-white/50 truncate capitalize">{user.role}</p>
             </div>
           </div>
         )}

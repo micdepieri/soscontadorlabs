@@ -27,20 +27,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (firebaseUser) {
         // Listen to Firestore document for role and additional data
         const userRef = doc(db, "users", firebaseUser.uid);
-        const unsubDoc = onSnapshot(userRef, (doc) => {
-          if (doc.exists()) {
-            const data = doc.data();
-            setUser({
-              ...firebaseUser,
-              role: data.role,
-              name: data.name,
-              avatarUrl: data.avatarUrl,
-            });
-          } else {
+        const unsubDoc = onSnapshot(
+          userRef,
+          (doc) => {
+            if (doc.exists()) {
+              const data = doc.data();
+              setUser({
+                ...firebaseUser,
+                role: data.role,
+                name: data.name,
+                avatarUrl: data.avatarUrl,
+              });
+            } else {
+              setUser(firebaseUser as User);
+            }
+            setLoading(false);
+          },
+          (_err) => {
+            // Pode ocorrer por race condition do token de auth — usa o user base sem dados do Firestore
             setUser(firebaseUser as User);
+            setLoading(false);
           }
-          setLoading(false);
-        });
+        );
         return () => unsubDoc();
       } else {
         setUser(null);
