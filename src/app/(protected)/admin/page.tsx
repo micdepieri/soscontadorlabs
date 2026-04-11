@@ -8,6 +8,7 @@ import {
   getPosts,
   getAISettings,
   getStripeSettings,
+  getCommunitySettings,
   getUsers,
   getAllSubscriptions,
   getAllContentStats,
@@ -27,7 +28,7 @@ export default async function AdminPage() {
   const user = await getUserByUid(userId);
   if (!user || user.role !== "ADMIN") redirect("/videos");
 
-  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, rawStripeSettings, allUsers, allSubscriptions, ratingStats] =
+  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, rawStripeSettings, rawCommunitySettings, allUsers, allSubscriptions, ratingStats] =
     await Promise.all([
       getVideos({ publishedOnly: false }),
       getMaterials({ publishedOnly: false }),
@@ -36,6 +37,7 @@ export default async function AdminPage() {
       getPosts({ publishedOnly: false }),
       getAISettings(),
       getStripeSettings(),
+      getCommunitySettings(),
       getUsers(),
       getAllSubscriptions(),
       getAllContentStats(),
@@ -102,6 +104,12 @@ export default async function AdminPage() {
     updatedAt: rawStripeSettings.updatedAt,
   };
 
+  const communitySettings = {
+    communityName: rawCommunitySettings.communityName,
+    communityTagline: rawCommunitySettings.communityTagline,
+    updatedAt: rawCommunitySettings.updatedAt,
+  };
+
   const aiSettings = {
     provider: rawAISettings.provider,
     model: rawAISettings.model,
@@ -127,6 +135,7 @@ export default async function AdminPage() {
         posts={posts}
         aiSettings={aiSettings}
         stripeSettings={stripeSettings}
+        communitySettings={communitySettings}
         members={members}
         ratingStats={ratingStats}
       />

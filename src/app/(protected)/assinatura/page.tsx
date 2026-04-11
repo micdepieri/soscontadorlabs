@@ -1,5 +1,6 @@
 import { getServerAuth } from "@/lib/server-auth";
 import { getUserByUid, getSubscription } from "@/lib/firestore";
+import { getStripeConfig } from "@/lib/stripe";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import CheckoutButton from "@/components/checkout-button";
@@ -20,6 +21,27 @@ export default async function AssinaturaPage() {
   const sub = await getSubscription(userId);
   const isActive = sub?.status === "ACTIVE";
   const isCancelled = sub?.status === "CANCELLED";
+
+  // Busca o preço real do Stripe para exibir na página
+  let priceLabel = "R$ 67,90";
+  let productName = "Assinatura Mensal SOS Contador Labs";
+  try {
+    const { stripe, priceId } = await getStripeConfig();
+    if (priceId) {
+      const price = await stripe.prices.retrieve(priceId, { expand: ["product"] });
+      if (price.unit_amount) {
+        priceLabel = new Intl.NumberFormat("pt-BR", {
+          style: "currency",
+          currency: price.currency.toUpperCase(),
+        }).format(price.unit_amount / 100);
+      }
+      if (price.product && typeof price.product === "object" && "name" in price.product) {
+        productName = (price.product as { name: string }).name;
+      }
+    }
+  } catch {
+    // Fallback para valores padrão se Stripe não estiver configurado
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -128,8 +150,11 @@ export default async function AssinaturaPage() {
 
           {/* Pricing */}
           <div className="mb-6 rounded-xl border-2 border-indigo-600 p-6">
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-600">
+              {productName}
+            </p>
             <div className="mb-1 flex items-baseline gap-1">
-              <span className="text-3xl font-bold text-gray-900">R$ 49</span>
+              <span className="text-3xl font-bold text-gray-900">{priceLabel}</span>
               <span className="text-gray-500">/mês</span>
             </div>
             <p className="mb-6 text-sm text-gray-600">Cancele quando quiser.</p>

@@ -8,11 +8,13 @@ import {
   getCategories,
   getContentRatingStats,
   getUserRating,
+  getUserContentProgress,
 } from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import Thermometer from "@/components/thermometer";
+import ConsumeButton from "@/components/consume-button";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -38,11 +40,12 @@ export default async function MaterialPage({ params }: Props) {
   const { id } = await params;
   const { userId } = await getServerAuth();
 
-  const [material, categories, ratingStats, userRating] = await Promise.all([
+  const [material, categories, ratingStats, userRating, alreadyConsumed] = await Promise.all([
     getMaterialById(id),
     getCategories(),
     getContentRatingStats(id),
     userId ? getUserRating(userId, id) : null,
+    userId ? getUserContentProgress(userId, id) : false,
   ]);
 
   if (!material || !material.publishedAt) notFound();
@@ -137,12 +140,20 @@ export default async function MaterialPage({ params }: Props) {
       </div>
 
       <div className="mt-8">
-        <Thermometer 
-          contentId={material.id} 
-          contentType="material" 
-          initialRating={userRating} 
-          stats={ratingStats} 
+        <Thermometer
+          contentId={material.id}
+          contentType="material"
+          initialRating={userRating}
+          stats={ratingStats}
         />
+        {userId && (
+          <div className="mt-4 flex items-center gap-3">
+            <ConsumeButton contentId={material.id} contentType="material" initialConsumed={alreadyConsumed} />
+            {!alreadyConsumed && (
+              <span className="text-xs text-cloud-white/40">Marque como concluído para ganhar XP</span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Comments */}

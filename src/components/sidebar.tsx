@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { collection, query, orderBy, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -15,9 +15,12 @@ interface Category {
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.toString();
   const { user } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
+  const [communityName, setCommunityName] = useState("Comunidade");
 
   useEffect(() => {
     async function fetchCategories() {
@@ -35,7 +38,28 @@ export default function Sidebar() {
         setLoading(false);
       }
     }
+
+    async function fetchCommunitySettings() {
+      try {
+        const res = await fetch("/api/community-settings", { cache: "no-store" });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.communityName) setCommunityName(data.communityName);
+        }
+      } catch {
+        // keep default
+      }
+    }
+
     fetchCategories();
+    fetchCommunitySettings();
+
+    const handleUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail?.communityName) setCommunityName(detail.communityName);
+    };
+    window.addEventListener("communitySettingsUpdated", handleUpdate);
+    return () => window.removeEventListener("communitySettingsUpdated", handleUpdate);
   }, []);
 
   const isAdmin = user?.role === "ADMIN";
@@ -48,7 +72,7 @@ export default function Sidebar() {
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-tech-blue text-white font-bold text-lg">
             S
           </div>
-          <span className="font-bold text-cloud-white tracking-tight">Comunidade</span>
+          <span className="font-bold text-cloud-white tracking-tight">{communityName}</span>
         </Link>
       </div>
 
@@ -59,7 +83,7 @@ export default function Sidebar() {
           <Link
             href="/videos"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              pathname === "/videos"
+              pathname === "/videos" && !searchQuery
                 ? "bg-tech-blue/20 text-cyan-ia"
                 : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
@@ -68,6 +92,20 @@ export default function Sidebar() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
             </svg>
             Início
+          </Link>
+          <Link
+            href="/videos?tipo=video"
+            className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              pathname === "/videos" && searchQuery === "tipo=video"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
+            }`}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Vídeos
           </Link>
           <Link
             href="/materiais"

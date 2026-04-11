@@ -8,6 +8,9 @@ import {
   getStripeSettings,
   updateStripeSettings,
   StripeSettings,
+  getCommunitySettings,
+  updateCommunitySettings,
+  CommunitySettings,
 } from "@/lib/firestore";
 
 async function requireAdmin() {
@@ -30,6 +33,15 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const section = searchParams.get("section");
+
+  if (section === "community") {
+    const settings = await getCommunitySettings();
+    return NextResponse.json({
+      communityName: settings.communityName,
+      communityTagline: settings.communityTagline,
+      updatedAt: settings.updatedAt,
+    });
+  }
 
   if (section === "stripe") {
     const settings = await getStripeSettings();
@@ -67,6 +79,18 @@ export async function PATCH(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const section = searchParams.get("section");
+
+  if (section === "community") {
+    const body: Partial<CommunitySettings> = await req.json();
+    const allowed: Partial<CommunitySettings> = {};
+    if (typeof body.communityName === "string") allowed.communityName = body.communityName.trim();
+    if (typeof body.communityTagline === "string") allowed.communityTagline = body.communityTagline.trim();
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+    await updateCommunitySettings(allowed);
+    return NextResponse.json({ success: true });
+  }
 
   if (section === "stripe") {
     const body: Partial<StripeSettings> = await req.json();

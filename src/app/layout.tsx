@@ -21,6 +21,10 @@ export const metadata: Metadata = {
   },
   description:
     "Comunidade de contadores que compartilham experiências práticas com IA — sem jargões, sem gurus.",
+  icons: {
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+  },
   openGraph: {
     title: "Portal da Comunidade",
     description:
@@ -50,6 +54,7 @@ export default function RootLayout({
       <html
         lang="pt-BR"
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
+        suppressHydrationWarning
       >
         <head>
           {/* Anti-FOUC: apply stored theme before first paint */}
@@ -59,7 +64,7 @@ export default function RootLayout({
             }}
           />
         </head>
-        <body className="flex min-h-full flex-col">
+        <body className="flex min-h-full flex-col" suppressHydrationWarning>
           <ThemeProvider>{children}</ThemeProvider>
         </body>
       </html>

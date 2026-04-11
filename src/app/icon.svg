@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Top-right quadrant: RED -->
+  <path d="M50,50 L50,5 A45,45 0 0,1 95,50 Z" fill="#DC2626"/>
+  <!-- Bottom-right quadrant: WHITE -->
+  <path d="M50,50 L95,50 A45,45 0 0,1 50,95 Z" fill="#F8FAFC"/>
+  <!-- Bottom-left quadrant: RED -->
+  <path d="M50,50 L50,95 A45,45 0 0,1 5,50 Z" fill="#DC2626"/>
+  <!-- Top-left quadrant: WHITE -->
+  <path d="M50,50 L5,50 A45,45 0 0,1 50,5 Z" fill="#F8FAFC"/>
+
+  <!-- Dividing cross lines (center covered by inner circle) -->
+  <line x1="50" y1="5" x2="50" y2="95" stroke="#991B1B" stroke-width="2"/>
+  <line x1="5" y1="50" x2="95" y2="50" stroke="#991B1B" stroke-width="2"/>
+
+  <!-- Inner hole (white circle) -->
+  <circle cx="50" cy="50" r="25" fill="white"/>
+
+  <!-- Outer ring border -->
+  <circle cx="50" cy="50" r="45" fill="none" stroke="#991B1B" stroke-width="3"/>
+  <!-- Inner ring border -->
+  <circle cx="50" cy="50" r="25" fill="none" stroke="#991B1B" stroke-width="3"/>
+</svg>

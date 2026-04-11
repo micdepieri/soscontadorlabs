@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { 
-  BeakerIcon, 
-  CpuChipIcon, 
-  ChatBubbleBottomCenterTextIcon, 
+import {
+  BeakerIcon,
+  CpuChipIcon,
+  ChatBubbleBottomCenterTextIcon,
   ShieldCheckIcon,
   ArrowRightIcon,
   CheckCircleIcon
@@ -14,6 +15,19 @@ import {
 
 export default function HomePage() {
   const { user, loading } = useAuth();
+
+  // Landing page is always dark — override any user theme preference
+  useEffect(() => {
+    const html = document.documentElement;
+    html.classList.remove("light");
+    html.classList.add("dark");
+    return () => {
+      // Restore saved theme when leaving the landing page
+      const saved = localStorage.getItem("theme");
+      html.classList.remove("dark", "light");
+      html.classList.add(saved === "light" ? "light" : "dark");
+    };
+  }, []);
 
   return (
     <main className="flex min-h-screen flex-col bg-deep-navy text-cloud-white">

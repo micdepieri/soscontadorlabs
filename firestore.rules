@@ -61,5 +61,23 @@ service cloud.firestore {
       allow read: if false;
       allow write: if false;
     }
+
+    // Content progress - readable by authenticated users; written by server only
+    match /content_progress/{progressId} {
+      allow read: if request.auth != null;
+      allow write: if false; // server only via /api/content/consume
+    }
+
+    // User XP - readable by authenticated users; written by server only
+    match /user_xp/{userId} {
+      allow read: if request.auth != null;
+      allow write: if false; // server only
+    }
+
+    // XP transactions - server only
+    match /xp_transactions/{txId} {
+      allow read: if false;
+      allow write: if false;
+    }
   }
 }

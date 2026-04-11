@@ -1,5 +1,5 @@
 import { getServerAuth } from "@/lib/server-auth";
-import { getUserByUid, getSubscription } from "@/lib/firestore";
+import { getUserByUid, getSubscription, getUserXP, getAllUsersXP, LEVEL_LABELS, calcLevel } from "@/lib/firestore";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -31,7 +31,14 @@ export default async function PerfilPage() {
   const user = await getUserByUid(userId);
   if (!user) redirect("/sign-in");
 
-  const sub = await getSubscription(userId);
+  const [sub, userXP, allXP] = await Promise.all([
+    getSubscription(userId),
+    getUserXP(userId),
+    getAllUsersXP(),
+  ]);
+
+  const rank = userXP ? allXP.findIndex((x) => x.userId === userId) + 1 : null;
+  const totalMembers = allXP.length;
   const subStatus = sub?.status ?? "INACTIVE";
 
   return (
@@ -168,6 +175,98 @@ export default async function PerfilPage() {
           />
         </div>
       </div>
+
+      {/* XP & Gamification */}
+      {(() => {
+        const xp = userXP?.totalXP ?? 0;
+        const level = userXP ? userXP.level : calcLevel(0);
+        const levelLabel = LEVEL_LABELS[level];
+        const consumed = userXP?.contentConsumed ?? 0;
+
+        // XP thresholds per level
+        const thresholds = [0, 50, 150, 350, 700, Infinity];
+        const levelStart = thresholds[level - 1];
+        const levelEnd = thresholds[level];
+        const progress = levelEnd === Infinity ? 100 : Math.round(((xp - levelStart) / (levelEnd - levelStart)) * 100);
+        const xpToNext = levelEnd === Infinity ? null : levelEnd - xp;
+
+        const levelColors: Record<number, { badge: string; bar: string; text: string }> = {
+          1: { badge: "bg-zinc-100 text-zinc-600 border-zinc-200", bar: "bg-zinc-400", text: "text-zinc-500" },
+          2: { badge: "bg-blue-50 text-blue-700 border-blue-100", bar: "bg-blue-500", text: "text-blue-600" },
+          3: { badge: "bg-purple-50 text-purple-700 border-purple-100", bar: "bg-purple-500", text: "text-purple-600" },
+          4: { badge: "bg-amber-50 text-amber-700 border-amber-100", bar: "bg-amber-500", text: "text-amber-600" },
+          5: { badge: "bg-emerald-50 text-emerald-700 border-emerald-100", bar: "bg-emerald-500", text: "text-emerald-600" },
+        };
+        const colors = levelColors[level] || levelColors[1];
+
+        return (
+          <div className="rounded-xl border border-gray-200 bg-white p-8">
+            <h2 className="mb-5 text-lg font-semibold text-gray-900">Progresso na Comunidade</h2>
+
+            <div className="flex flex-wrap items-start gap-6">
+              {/* Level badge */}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className={`flex h-16 w-16 items-center justify-center rounded-2xl border-2 text-2xl font-black ${colors.badge}`}>
+                  {level}
+                </div>
+                <span className={`text-xs font-semibold ${colors.text}`}>{levelLabel}</span>
+              </div>
+
+              {/* Progress details */}
+              <div className="flex-1 min-w-0">
+                <div className="mb-3 flex items-baseline justify-between gap-2">
+                  <span className="text-2xl font-bold text-gray-900">
+                    {xp.toLocaleString("pt-BR")} XP
+                  </span>
+                  {rank && (
+                    <span className="text-sm text-gray-500">
+                      #{rank} de {totalMembers} membros
+                    </span>
+                  )}
+                </div>
+
+                {/* Progress bar */}
+                <div className="mb-1.5 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ${colors.bar}`}
+                    style={{ width: `${Math.min(progress, 100)}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-gray-400">
+                  {xpToNext !== null ? (
+                    <span>Faltam <strong className="text-gray-600">{xpToNext} XP</strong> para o próximo nível</span>
+                  ) : (
+                    <span className="font-semibold text-emerald-600">Nível máximo atingido!</span>
+                  )}
+                  <span>{consumed} {consumed === 1 ? "conteúdo" : "conteúdos"} concluídos</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Level ladder */}
+            <div className="mt-6 flex justify-between border-t border-gray-100 pt-5">
+              {([
+                { level: 1, label: "Iniciante", xp: "0" },
+                { level: 2, label: "Aprendiz", xp: "50" },
+                { level: 3, label: "Praticante", xp: "150" },
+                { level: 4, label: "Especialista", xp: "350" },
+                { level: 5, label: "Mestre", xp: "700" },
+              ] as const).map((l) => (
+                <div
+                  key={l.level}
+                  className={`flex flex-col items-center gap-1 text-center ${l.level <= level ? "opacity-100" : "opacity-30"}`}
+                >
+                  <div className={`flex h-7 w-7 items-center justify-center rounded-full border text-xs font-bold ${l.level <= level ? levelColors[l.level].badge : "bg-gray-50 text-gray-400 border-gray-200"}`}>
+                    {l.level}
+                  </div>
+                  <span className="text-[10px] text-gray-400 hidden sm:block">{l.xp} XP</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Subscription */}
       <div className="rounded-xl border border-gray-200 bg-white p-8">

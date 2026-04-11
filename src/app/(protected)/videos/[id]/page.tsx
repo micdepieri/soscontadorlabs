@@ -8,12 +8,14 @@ import {
   getCategories,
   getContentRatingStats,
   getUserRating,
+  getUserContentProgress,
 } from "@/lib/firestore";
 import type { Metadata } from "next";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import VideoEmbed from "@/components/video-embed";
 import Thermometer from "@/components/thermometer";
+import ConsumeButton from "@/components/consume-button";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -33,11 +35,12 @@ export default async function VideoPage({ params }: Props) {
   const { id } = await params;
   const { userId } = await getServerAuth();
 
-  const [video, categories, ratingStats, userRating] = await Promise.all([
+  const [video, categories, ratingStats, userRating, alreadyConsumed] = await Promise.all([
     getVideoById(id),
     getCategories(),
     getContentRatingStats(id),
     userId ? getUserRating(userId, id) : null,
+    userId ? getUserContentProgress(userId, id) : false,
   ]);
 
   if (!video || !video.publishedAt) notFound();
@@ -112,13 +115,21 @@ export default async function VideoPage({ params }: Props) {
           </div>
         )}
 
-        <div className="mt-12">
-          <Thermometer 
-            contentId={video.id} 
-            contentType="video" 
-            initialRating={userRating} 
-            stats={ratingStats} 
+        <div className="mt-12 space-y-4">
+          <Thermometer
+            contentId={video.id}
+            contentType="video"
+            initialRating={userRating}
+            stats={ratingStats}
           />
+          {userId && (
+            <div className="flex items-center gap-3">
+              <ConsumeButton contentId={video.id} contentType="video" initialConsumed={alreadyConsumed} />
+              {!alreadyConsumed && (
+                <span className="text-xs text-cloud-white/40">Marque como concluído para ganhar XP</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 

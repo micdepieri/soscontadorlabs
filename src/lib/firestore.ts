@@ -618,6 +618,41 @@ export async function updateAISettings(data: Partial<AISettings>) {
     .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
 }
 
+// Community Settings helpers
+export interface CommunitySettings {
+  communityName: string;
+  communityTagline: string;
+  updatedAt: string;
+}
+
+const COMMUNITY_SETTINGS_DOC = "community_config";
+
+export async function getCommunitySettings(): Promise<CommunitySettings> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("settings").doc(COMMUNITY_SETTINGS_DOC).get();
+  if (!doc.exists) {
+    return {
+      communityName: "Comunidade",
+      communityTagline: "Portal da Comunidade",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  const data = doc.data()!;
+  return {
+    communityName: data.communityName ?? "Comunidade",
+    communityTagline: data.communityTagline ?? "Portal da Comunidade",
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+export async function updateCommunitySettings(data: Partial<CommunitySettings>) {
+  const db = getAdminFirestore();
+  await db
+    .collection("settings")
+    .doc(COMMUNITY_SETTINGS_DOC)
+    .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
 // Stripe Settings helpers
 export interface StripeSettings {
   secretKey: string;
@@ -657,6 +692,164 @@ export async function updateStripeSettings(data: Partial<StripeSettings>) {
     .collection("settings")
     .doc(STRIPE_SETTINGS_DOC)
     .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+// XP / Gamification helpers
+
+export type ContentType = "video" | "material" | "post";
+
+export interface FirestoreContentProgress {
+  userId: string;
+  contentId: string;
+  contentType: ContentType;
+  consumedAt: string;
+}
+
+export interface FirestoreUserXP {
+  userId: string;
+  totalXP: number;
+  level: number;
+  contentConsumed: number;
+  updatedAt: string;
+}
+
+export interface FirestoreXPTransaction {
+  id: string;
+  userId: string;
+  contentId: string;
+  contentType: ContentType;
+  xpAmount: number;
+  createdAt: string;
+}
+
+export const XP_VALUES: Record<ContentType, number> = {
+  video: 10,
+  material: 5,
+  post: 5,
+};
+
+export function calcLevel(xp: number): number {
+  if (xp >= 700) return 5;
+  if (xp >= 350) return 4;
+  if (xp >= 150) return 3;
+  if (xp >= 50) return 2;
+  return 1;
+}
+
+export const LEVEL_LABELS: Record<number, string> = {
+  1: "Iniciante",
+  2: "Aprendiz",
+  3: "Praticante",
+  4: "Especialista",
+  5: "Mestre",
+};
+
+/** Mark a content as consumed. Returns the XP awarded (0 if already consumed). */
+export async function markContentConsumed(
+  userId: string,
+  contentId: string,
+  contentType: ContentType
+): Promise<number> {
+  const db = getAdminFirestore();
+  const progressId = `${userId}_${contentId}`;
+  const progressRef = db.collection("content_progress").doc(progressId);
+  const existing = await progressRef.get();
+
+  if (existing.exists) return 0; // already consumed, no XP
+
+  const now = new Date().toISOString();
+  const xpAmount = XP_VALUES[contentType];
+
+  // Write progress doc
+  await progressRef.set({ userId, contentId, contentType, consumedAt: now });
+
+  // Log XP transaction
+  await db.collection("xp_transactions").add({
+    userId,
+    contentId,
+    contentType,
+    xpAmount,
+    createdAt: now,
+  });
+
+  // Update user XP (upsert)
+  const xpRef = db.collection("user_xp").doc(userId);
+  const xpDoc = await xpRef.get();
+  if (xpDoc.exists) {
+    const data = xpDoc.data() as FirestoreUserXP;
+    const newXP = data.totalXP + xpAmount;
+    await xpRef.update({
+      totalXP: newXP,
+      level: calcLevel(newXP),
+      contentConsumed: data.contentConsumed + 1,
+      updatedAt: now,
+    });
+  } else {
+    await xpRef.set({
+      userId,
+      totalXP: xpAmount,
+      level: calcLevel(xpAmount),
+      contentConsumed: 1,
+      updatedAt: now,
+    });
+  }
+
+  return xpAmount;
+}
+
+/** Check if a user has consumed a specific content. */
+export async function getUserContentProgress(
+  userId: string,
+  contentId: string
+): Promise<boolean> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("content_progress").doc(`${userId}_${contentId}`).get();
+  return doc.exists;
+}
+
+/** Get XP data for a single user. */
+export async function getUserXP(userId: string): Promise<FirestoreUserXP | null> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("user_xp").doc(userId).get();
+  if (!doc.exists) return null;
+  return { userId, ...doc.data() } as FirestoreUserXP;
+}
+
+/** Get XP data for all users (for leaderboard). */
+export async function getAllUsersXP(): Promise<FirestoreUserXP[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("user_xp").orderBy("totalXP", "desc").get();
+  return snapshot.docs.map((doc) => ({ userId: doc.id, ...doc.data() }) as FirestoreUserXP);
+}
+
+/** Analytics overview: top content by consumption count. */
+export async function getContentConsumptionStats(): Promise<
+  Record<string, { count: number; contentType: ContentType }>
+> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("content_progress").get();
+  const stats: Record<string, { count: number; contentType: ContentType }> = {};
+  snapshot.docs.forEach((doc) => {
+    const { contentId, contentType } = doc.data() as FirestoreContentProgress;
+    if (!stats[contentId]) stats[contentId] = { count: 0, contentType };
+    stats[contentId].count += 1;
+  });
+  return stats;
+}
+
+/** Total XP transactions count and sum. */
+export async function getXPOverview(): Promise<{ totalXPDistributed: number; totalConsumptions: number; activeMembers: number }> {
+  const db = getAdminFirestore();
+  const [txSnap, xpSnap] = await Promise.all([
+    db.collection("xp_transactions").get(),
+    db.collection("user_xp").get(),
+  ]);
+  const totalXPDistributed = txSnap.docs.reduce((acc, d) => acc + (d.data().xpAmount as number), 0);
+  return {
+    totalXPDistributed,
+    totalConsumptions: txSnap.size,
+    activeMembers: xpSnap.size,
+  };
 }
 
 // Rating helpers

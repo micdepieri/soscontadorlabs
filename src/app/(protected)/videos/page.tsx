@@ -11,16 +11,19 @@ export const metadata: Metadata = {
 export default async function VideosPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; categoria?: string }>;
+  searchParams: Promise<{ q?: string; categoria?: string; tipo?: string }>;
 }) {
-  const { q, categoria } = await searchParams;
+  const { q, categoria, tipo } = await searchParams;
   const user = await getCurrentUser();
   const isAdmin = user?.role === "ADMIN";
 
+  const showVideos = tipo !== "post";
+  const showPosts = tipo !== "video";
+
   const [categories, allVideos, allPosts] = await Promise.all([
     getCategories(),
-    getVideos({ publishedOnly: true, search: q || undefined }),
-    getPosts({ publishedOnly: true, search: q || undefined }),
+    showVideos ? getVideos({ publishedOnly: true, search: q || undefined }) : Promise.resolve([]),
+    showPosts ? getPosts({ publishedOnly: true, search: q || undefined }) : Promise.resolve([]),
   ]);
 
   const categoryMap = Object.fromEntries(categories.map((c) => [c.id, c]));
@@ -78,24 +81,30 @@ export default async function VideosPage({
       ) : (
         <div>
           <h1 className="text-3xl font-bold text-cloud-white line-clamp-1">
-            {selectedCategory ? `# ${selectedCategory.name}` : "Portal da Comunidade"}
+            {selectedCategory
+              ? `# ${selectedCategory.name}`
+              : tipo === "video"
+              ? "Vídeos"
+              : "Portal da Comunidade"}
           </h1>
           <p className="mt-2 text-cloud-white/60 max-w-2xl">
-            {selectedCategory 
-              ? `Explorando conteúdos sobre ${selectedCategory.name}.` 
-              : "Bem-vindo! Escolha um canal na lateral para começar a explorar as experiências práticas com IA."
-            }
+            {selectedCategory
+              ? `Explorando conteúdos sobre ${selectedCategory.name}.`
+              : tipo === "video"
+              ? "Todos os vídeos publicados na comunidade."
+              : "Bem-vindo! Escolha um canal na lateral para começar a explorar as experiências práticas com IA."}
           </p>
         </div>
       )}
 
       {/* Search + Filter */}
       <form className="mb-8 flex flex-col gap-3 sm:flex-row">
+        {tipo && <input type="hidden" name="tipo" value={tipo} />}
         <input
           type="search"
           name="q"
           defaultValue={q}
-          placeholder="Buscar vídeos ou artigos..."
+          placeholder={tipo === "video" ? "Buscar vídeos..." : "Buscar vídeos ou artigos..."}
           className="flex-1 rounded-lg border border-app-border px-4 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
         />
         <select
@@ -122,7 +131,7 @@ export default async function VideosPage({
       {categories.length > 0 && (
         <div className="mb-8 flex flex-wrap gap-2">
           <Link
-            href="/videos"
+            href={tipo ? `/videos?tipo=${tipo}` : "/videos"}
             className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
               !categoria
                 ? "bg-tech-blue text-white"
@@ -134,7 +143,7 @@ export default async function VideosPage({
           {categories.map((c) => (
             <Link
               key={c.id}
-              href={`/videos?categoria=${c.slug}`}
+              href={tipo ? `/videos?tipo=${tipo}&categoria=${c.slug}` : `/videos?categoria=${c.slug}`}
               className={`rounded-full px-4 py-1.5 text-xs font-medium transition-colors ${
                 categoria === c.slug
                   ? "bg-tech-blue text-white"

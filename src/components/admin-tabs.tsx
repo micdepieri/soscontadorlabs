@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import AdminAnalyticsTab from "@/components/admin-analytics-tab";
 import { storage } from "@/lib/firebase";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
@@ -45,7 +46,7 @@ interface Post {
   tags: string[];
 }
 
-type Tab = "videos" | "materials" | "posts" | "categories" | "demands" | "settings" | "members";
+type Tab = "videos" | "materials" | "posts" | "categories" | "demands" | "settings" | "members" | "analytics";
 
 interface AISettingsData {
   provider: "anthropic" | "openai";
@@ -55,6 +56,12 @@ interface AISettingsData {
   openaiApiKeySet: boolean;
   openaiApiKeyMasked: string;
   openaiBaseUrl: string;
+  updatedAt: string;
+}
+
+interface CommunitySettingsData {
+  communityName: string;
+  communityTagline: string;
   updatedAt: string;
 }
 
@@ -103,6 +110,7 @@ export default function AdminTabs({
   contentRequests,
   aiSettings,
   stripeSettings,
+  communitySettings = { communityName: "Comunidade", communityTagline: "Portal da Comunidade", updatedAt: "" },
   members,
   ratingStats,
 }: {
@@ -113,6 +121,7 @@ export default function AdminTabs({
   contentRequests: ContentRequest[];
   aiSettings: AISettingsData;
   stripeSettings: StripeSettingsData;
+  communitySettings: CommunitySettingsData;
   members: Member[];
   ratingStats: Record<string, { total: number; count: number; average: number }>;
 }) {
@@ -124,7 +133,7 @@ export default function AdminTabs({
     const t = searchParams.get("tab") as Tab;
     if (
       t &&
-      (["videos", "materials", "posts", "categories", "demands", "settings", "members"] as Tab[]).includes(t)
+      (["videos", "materials", "posts", "categories", "demands", "settings", "members", "analytics"] as Tab[]).includes(t)
     ) {
       setTab(t);
     }
@@ -144,7 +153,7 @@ export default function AdminTabs({
       {/* Tab nav */}
       <div className="mb-8 border-b border-app-border overflow-x-auto">
         <div className="flex gap-6 min-w-max pb-px">
-          {(["videos", "materials", "posts", "categories", "demands", "settings", "members"] as Tab[]).map(
+          {(["videos", "materials", "posts", "categories", "demands", "settings", "members", "analytics"] as Tab[]).map(
             (t) => (
               <button
                 key={t}
@@ -167,6 +176,8 @@ export default function AdminTabs({
                   ? "Demandas IA"
                   : t === "members"
                   ? "Membros"
+                  : t === "analytics"
+                  ? "Analytics"
                   : "Configurações"}
                 {t === "demands" && pendingCount > 0 && (
                   <span className="ml-1.5 inline-flex items-center justify-center rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -206,6 +217,8 @@ export default function AdminTabs({
       )}
       {tab === "settings" && (
         <div className="space-y-12">
+          <CommunitySettingsTab initialSettings={communitySettings} onSave={() => router.refresh()} />
+          <hr className="border-app-border" />
           <AISettingsTab initialSettings={aiSettings} onSave={() => router.refresh()} />
           <hr className="border-app-border" />
           <StripeSettingsTab initialSettings={stripeSettings} onSave={() => router.refresh()} />
@@ -214,6 +227,7 @@ export default function AdminTabs({
       {tab === "members" && (
         <MembersTab initialMembers={members} onSave={() => router.refresh()} />
       )}
+      {tab === "analytics" && <AdminAnalyticsTab />}
     </div>
   );
 }
@@ -1646,6 +1660,107 @@ function AISettingsTab({
             <p>
               Atualizado em:{" "}
               {new Date(initialSettings.updatedAt).toLocaleString("pt-BR")}
+            </p>
+          )}
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function CommunitySettingsTab({
+  initialSettings,
+  onSave,
+}: {
+  initialSettings: CommunitySettingsData;
+  onSave: () => void;
+}) {
+  const [communityName, setCommunityName] = useState(initialSettings.communityName);
+  const [communityTagline, setCommunityTagline] = useState(initialSettings.communityTagline);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveMsg(null);
+
+    const res = await fetch("/api/admin/settings?section=community", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ communityName: communityName.trim(), communityTagline: communityTagline.trim() }),
+    });
+
+    setSaving(false);
+    if (res.ok) {
+      setSaveMsg("Configurações da comunidade salvas!");
+      window.dispatchEvent(
+        new CustomEvent("communitySettingsUpdated", {
+          detail: { communityName: communityName.trim(), communityTagline: communityTagline.trim() },
+        })
+      );
+      onSave();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setSaveMsg(`Erro: ${err.error || "Falha ao salvar"}`);
+    }
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-6">
+        <h2 className="font-semibold text-cloud-white">Identidade da Comunidade</h2>
+        <p className="mt-1 text-sm text-cloud-white/50">
+          Nome e descrição exibidos na barra lateral e no cabeçalho do portal.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">
+              Nome da Comunidade
+            </label>
+            <input
+              type="text"
+              value={communityName}
+              onChange={(e) => setCommunityName(e.target.value)}
+              placeholder="Ex: SOS Contador Labs"
+              maxLength={60}
+              required
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-cloud-white/40">Aparece na barra lateral (logo).</p>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">
+              Tagline / Subtítulo
+            </label>
+            <input
+              type="text"
+              value={communityTagline}
+              onChange={(e) => setCommunityTagline(e.target.value)}
+              placeholder="Ex: Portal da Comunidade"
+              maxLength={80}
+              required
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+            <p className="mt-1 text-xs text-cloud-white/40">Usado no título das páginas (aba do browser).</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar"}
+          </button>
+          {saveMsg && (
+            <p className={`text-sm ${saveMsg.startsWith("Erro") ? "text-red-600" : "text-green-600"}`}>
+              {saveMsg}
             </p>
           )}
         </div>
