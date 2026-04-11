@@ -14,6 +14,7 @@ import {
   getAllContentStats,
 } from "@/lib/firestore";
 import { redirect } from "next/navigation";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import AdminTabs from "@/components/admin-tabs";
 
@@ -127,18 +128,20 @@ export default async function AdminPage() {
         <h1 className="text-3xl font-bold text-cloud-white">Painel Admin</h1>
         <p className="mt-2 text-cloud-white/60">Gerencie vídeos, materiais, artigos e categorias.</p>
       </div>
-      <AdminTabs
-        videos={videos}
-        materials={materials}
-        categories={categories}
-        contentRequests={contentRequests}
-        posts={posts}
-        aiSettings={aiSettings}
-        stripeSettings={stripeSettings}
-        communitySettings={communitySettings}
-        members={members}
-        ratingStats={ratingStats}
-      />
+      <Suspense>
+        <AdminTabs
+          videos={videos}
+          materials={materials}
+          categories={categories}
+          contentRequests={contentRequests}
+          posts={posts}
+          aiSettings={aiSettings}
+          stripeSettings={stripeSettings}
+          communitySettings={communitySettings}
+          members={members}
+          ratingStats={ratingStats}
+        />
+      </Suspense>
     </div>
   );
 }
