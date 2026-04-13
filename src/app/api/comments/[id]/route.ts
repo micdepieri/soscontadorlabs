@@ -7,7 +7,9 @@ async function getComment(commentId: string) {
   const db = getAdminFirestore();
   const doc = await db.collection("comments").doc(commentId).get();
   if (!doc.exists) return null;
-  return { id: doc.id, ...doc.data() } as { authorId: string; [k: string]: unknown };
+  const data = doc.data();
+  if (!data) return null;
+  return { id: doc.id, ...data } as unknown as { authorId: string; [k: string]: unknown };
 }
 
 export async function PATCH(

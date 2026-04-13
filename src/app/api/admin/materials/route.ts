@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     type: type as "PDF" | "LINK" | "RESOURCE",
     description: description || null,
     categoryId: categoryId || null,
+    thumbnail: null,
     tags: tags || [],
     isPremium: Boolean(isPremium),
     publishedAt: publishedAt ? new Date(publishedAt).toISOString() : null,
