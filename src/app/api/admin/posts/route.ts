@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerAuth } from "@/lib/server-auth";
-import { getUserByUid, upsertPost } from "@/lib/firestore";
+import { getUserByUid, upsertPost, getAllMemberEmails } from "@/lib/firestore";
+import { sendContentNotification } from "@/lib/email";
 
 async function requireAdmin() {
   const { userId } = await getServerAuth();
@@ -32,6 +33,22 @@ export async function POST(req: NextRequest) {
     isPremium: Boolean(isPremium),
     publishedAt: publishedAt || null,
   });
+
+  if (publishedAt) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "";
+    getAllMemberEmails().then((emails) =>
+      sendContentNotification(
+        {
+          subject: `Novo artigo: ${title}`,
+          title: `Novo artigo publicado`,
+          body: `"${title}" — leia agora no portal da comunidade.`,
+          ctaUrl: `${appUrl}/posts/${slug}`,
+          ctaLabel: "Ler artigo",
+        },
+        emails
+      )
+    );
+  }
 
   return NextResponse.json(post, { status: 201 });
 }

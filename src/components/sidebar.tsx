@@ -68,7 +68,7 @@ export default function Sidebar() {
     <aside className="fixed inset-y-0 left-0 hidden w-64 flex-col border-r border-app-border bg-midnight-blue md:flex">
       {/* Header / Brand */}
       <div className="flex h-16 items-center border-b border-app-border px-6">
-        <Link href="/videos" className="flex items-center gap-2">
+        <Link href="/inicio" className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-tech-blue text-white font-bold text-lg">
             S
           </div>
@@ -81,9 +81,9 @@ export default function Sidebar() {
         {/* Main Links */}
         <nav className="space-y-1">
           <Link
-            href="/videos"
+            href="/inicio"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              pathname === "/videos" && !searchQuery
+              pathname === "/inicio" && !searchQuery
                 ? "bg-tech-blue/20 text-cyan-ia"
                 : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
@@ -94,9 +94,9 @@ export default function Sidebar() {
             Início
           </Link>
           <Link
-            href="/videos?tipo=video"
+            href="/videos"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              pathname === "/videos" && searchQuery === "tipo=video"
+              pathname === "/videos" && !searchQuery
                 ? "bg-tech-blue/20 text-cyan-ia"
                 : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
             }`}
@@ -134,6 +134,32 @@ export default function Sidebar() {
             Artigos
           </Link>
           <Link
+            href="/eventos"
+            className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              pathname === "/eventos"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
+            }`}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Eventos
+          </Link>
+          <Link
+            href="/salvos"
+            className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              pathname === "/salvos"
+                ? "bg-tech-blue/20 text-cyan-ia"
+                : "text-cloud-white/60 hover:bg-deep-navy hover:text-cloud-white"
+            }`}
+          >
+            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+            </svg>
+            Salvos
+          </Link>
+          <Link
             href="/suporte"
             className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
               pathname === "/suporte"
@@ -163,9 +189,9 @@ export default function Sidebar() {
               categories.map((cat) => (
                 <Link
                   key={cat.id}
-                  href={`/videos?categoria=${cat.slug}`}
+                  href={`/inicio?categoria=${cat.slug}`}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    pathname === "/videos" && cat.slug === new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("categoria")
+                    pathname === "/inicio" && cat.slug === new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("categoria")
                       ? "bg-app-chip text-cloud-white"
                       : "text-cloud-white/50 hover:bg-deep-navy hover:text-cloud-white"
                   }`}

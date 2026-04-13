@@ -2,7 +2,13 @@
 
 import { useState } from "react";
 
-export default function CheckoutButton() {
+interface CheckoutButtonProps {
+  returnPath?: string;
+  label?: string;
+  className?: string;
+}
+
+export default function CheckoutButton({ returnPath, label = "Assinar agora", className }: CheckoutButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -10,7 +16,11 @@ export default function CheckoutButton() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/stripe/checkout", { method: "POST" });
+      const res = await fetch("/api/stripe/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ returnPath }),
+      });
       const data = await res.json();
       if (data.url) {
         window.location.href = data.url;
@@ -19,7 +29,7 @@ export default function CheckoutButton() {
         setLoading(false);
       }
     } catch {
-      setError("Erro de conexao. Tente novamente.");
+      setError("Erro de conexão. Tente novamente.");
       setLoading(false);
     }
   }
@@ -29,9 +39,9 @@ export default function CheckoutButton() {
       <button
         onClick={handleCheckout}
         disabled={loading}
-        className="w-full rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"
+        className={className ?? "w-full rounded-lg bg-indigo-600 px-6 py-3 font-medium text-white transition-colors hover:bg-indigo-700 disabled:opacity-60"}
       >
-        {loading ? "Redirecionando..." : "Assinar agora"}
+        {loading ? "Redirecionando..." : label}
       </button>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </div>

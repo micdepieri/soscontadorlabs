@@ -60,8 +60,25 @@ function CommentItem({
 }) {
   const [replying, setReplying] = useState(false);
   const [replyText, setReplyText] = useState("");
+  const [editing, setEditing] = useState(false);
+  const [editText, setEditText] = useState(comment.content);
   const [isPending, startTransition] = useTransition();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const isOwner = currentUserId === comment.authorId;
   const likedByMe = currentUserId ? comment.likes.includes(currentUserId) : false;
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
 
   async function handleLike() {
     if (!currentUserId) return;
@@ -85,6 +102,32 @@ function CommentItem({
       });
       setReplyText("");
       setReplying(false);
+      onUpdate();
+    });
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editText.trim() || editText.trim() === comment.content) {
+      setEditing(false);
+      return;
+    }
+    startTransition(async () => {
+      await fetch(`/api/comments/${comment.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: editText.trim() }),
+      });
+      setEditing(false);
+      onUpdate();
+    });
+  }
+
+  async function handleDelete() {
+    setMenuOpen(false);
+    if (!confirm("Excluir este comentário?")) return;
+    startTransition(async () => {
+      await fetch(`/api/comments/${comment.id}`, { method: "DELETE" });
       onUpdate();
     });
   }
@@ -121,23 +164,92 @@ function CommentItem({
         <div className="rounded-2xl bg-midnight-blue border border-app-border p-4 shadow-xs transition-shadow hover:shadow-sm">
           <div className="flex items-center justify-between mb-1">
             <p className="text-sm font-bold text-cloud-white">{comment.authorName || "Membro"}</p>
-            <span className="text-[10px] text-cloud-white/40 font-medium uppercase">{formatDate(comment.createdAt)}</span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-cloud-white/40 font-medium uppercase">{formatDate(comment.createdAt)}</span>
+
+              {/* Owner actions menu */}
+              {isOwner && (
+                <div ref={menuRef} className="relative">
+                  <button
+                    onClick={() => setMenuOpen((v) => !v)}
+                    className="flex h-6 w-6 items-center justify-center rounded-md text-cloud-white/30 transition-colors hover:bg-deep-navy hover:text-cloud-white/70"
+                    aria-label="Opções"
+                  >
+                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24">
+                      <circle cx="5" cy="12" r="2" /><circle cx="12" cy="12" r="2" /><circle cx="19" cy="12" r="2" />
+                    </svg>
+                  </button>
+                  {menuOpen && (
+                    <div className="absolute right-0 top-7 z-50 w-36 rounded-xl border border-app-border bg-midnight-blue py-1 shadow-xl">
+                      <button
+                        onClick={() => { setEditing(true); setEditText(comment.content); setMenuOpen(false); }}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-cloud-white/80 transition-colors hover:bg-deep-navy"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                        Editar
+                      </button>
+                      <button
+                        onClick={handleDelete}
+                        disabled={isPending}
+                        className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-400 transition-colors hover:bg-deep-navy disabled:opacity-50"
+                      >
+                        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        Excluir
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-sm break-words whitespace-pre-wrap text-cloud-white/80 leading-relaxed">
-            {renderContent(comment.content)}
-          </p>
-          
+
+          {editing ? (
+            <form onSubmit={handleEdit} className="mt-1">
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={3}
+                autoFocus
+                className="w-full resize-none rounded-xl border border-cyan-ia/50 bg-deep-navy px-3 py-2 text-sm text-cloud-white/90 focus:outline-none focus:ring-2 focus:ring-cyan-ia"
+              />
+              <div className="mt-2 flex gap-2">
+                <button
+                  type="submit"
+                  disabled={isPending || !editText.trim()}
+                  className="rounded-lg bg-tech-blue px-4 py-1.5 text-xs font-bold text-white transition-all hover:bg-tech-blue/80 active:scale-95 disabled:opacity-50"
+                >
+                  {isPending ? "Salvando..." : "Salvar"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditing(false)}
+                  className="rounded-lg px-4 py-1.5 text-xs font-medium text-cloud-white/50 hover:bg-deep-navy transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          ) : (
+            <p className="text-sm break-words whitespace-pre-wrap text-cloud-white/80 leading-relaxed">
+              {renderContent(comment.content)}
+            </p>
+          )}
+
           {comment.imageUrl && (
             <div className="mt-4 overflow-hidden rounded-xl border border-app-border bg-deep-navy">
-              <img 
-                src={comment.imageUrl} 
-                alt="Anexo" 
+              <img
+                src={comment.imageUrl}
+                alt="Anexo"
                 className="max-h-96 w-auto object-contain mx-auto"
               />
             </div>
           )}
         </div>
-        
+
         <div className="mt-2 flex items-center gap-4 px-2">
           <button
             onClick={handleLike}
@@ -160,7 +272,7 @@ function CommentItem({
             </svg>
             {comment.likes.length > 0 ? comment.likes.length : "Curtir"}
           </button>
-          
+
           {currentUserId && depth === 0 && (
             <button
               onClick={() => setReplying(!replying)}
@@ -233,6 +345,7 @@ export default function CommentsSection({
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionUsers, setMentionUsers] = useState<User[]>([]);
   const [showMentions, setShowMentions] = useState(false);
+  const [mentionedUids, setMentionedUids] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -264,6 +377,8 @@ export default function CommentsSection({
     words.pop(); // Remove the partial query
     setNewComment(words.join(" ") + (words.length > 0 ? " " : "") + "@" + (user.name || user.email.split("@")[0]) + " ");
     setShowMentions(false);
+    // Track this user's UID so we can send mention notifications
+    setMentionedUids((prev) => prev.includes(user.uid) ? prev : [...prev, user.uid]);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -302,12 +417,14 @@ export default function CommentsSection({
           contentId,
           contentType,
           imageUrl,
+          mentions: mentionedUids,
         }),
       });
 
       setNewComment("");
       setImage(null);
       setImagePreview(null);
+      setMentionedUids([]);
       await refreshComments();
     });
   }

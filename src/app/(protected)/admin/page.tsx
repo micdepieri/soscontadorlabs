@@ -9,9 +9,11 @@ import {
   getAISettings,
   getStripeSettings,
   getCommunitySettings,
+  getEmailSettings,
   getUsers,
   getAllSubscriptions,
   getAllContentStats,
+  getEvents,
 } from "@/lib/firestore";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -27,9 +29,9 @@ export default async function AdminPage() {
   if (!userId) redirect("/sign-in");
 
   const user = await getUserByUid(userId);
-  if (!user || user.role !== "ADMIN") redirect("/videos");
+  if (!user || user.role !== "ADMIN") redirect("/inicio");
 
-  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, rawStripeSettings, rawCommunitySettings, allUsers, allSubscriptions, ratingStats] =
+  const [allVideos, allMaterials, categories, contentRequests, allPosts, rawAISettings, rawStripeSettings, rawCommunitySettings, rawEmailSettings, allUsers, allSubscriptions, ratingStats, allEvents] =
     await Promise.all([
       getVideos({ publishedOnly: false }),
       getMaterials({ publishedOnly: false }),
@@ -39,9 +41,11 @@ export default async function AdminPage() {
       getAISettings(),
       getStripeSettings(),
       getCommunitySettings(),
+      getEmailSettings(),
       getUsers(),
       getAllSubscriptions(),
       getAllContentStats(),
+      getEvents({ publishedOnly: false }),
     ]);
 
   const subscriptionByUserId = Object.fromEntries(
@@ -111,6 +115,19 @@ export default async function AdminPage() {
     updatedAt: rawCommunitySettings.updatedAt,
   };
 
+  const emailSettings = {
+    enabled: rawEmailSettings.enabled,
+    smtpHost: rawEmailSettings.smtpHost,
+    smtpPort: rawEmailSettings.smtpPort,
+    smtpUser: rawEmailSettings.smtpUser,
+    smtpPasswordSet: rawEmailSettings.smtpPassword.length > 0,
+    smtpPasswordMasked: maskKey(rawEmailSettings.smtpPassword),
+    smtpSecure: rawEmailSettings.smtpSecure,
+    senderName: rawEmailSettings.senderName,
+    senderEmail: rawEmailSettings.senderEmail,
+    updatedAt: rawEmailSettings.updatedAt,
+  };
+
   const aiSettings = {
     provider: rawAISettings.provider,
     model: rawAISettings.model,
@@ -138,8 +155,10 @@ export default async function AdminPage() {
           aiSettings={aiSettings}
           stripeSettings={stripeSettings}
           communitySettings={communitySettings}
+          emailSettings={emailSettings}
           members={members}
           ratingStats={ratingStats}
+          events={allEvents}
         />
       </Suspense>
     </div>

@@ -11,6 +11,9 @@ import {
   getCommunitySettings,
   updateCommunitySettings,
   CommunitySettings,
+  getEmailSettings,
+  updateEmailSettings,
+  EmailSettings,
 } from "@/lib/firestore";
 
 async function requireAdmin() {
@@ -33,6 +36,22 @@ export async function GET(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const section = searchParams.get("section");
+
+  if (section === "email") {
+    const settings = await getEmailSettings();
+    return NextResponse.json({
+      enabled: settings.enabled,
+      smtpHost: settings.smtpHost,
+      smtpPort: settings.smtpPort,
+      smtpUser: settings.smtpUser,
+      smtpPasswordSet: settings.smtpPassword.length > 0,
+      smtpPasswordMasked: maskKey(settings.smtpPassword),
+      smtpSecure: settings.smtpSecure,
+      senderName: settings.senderName,
+      senderEmail: settings.senderEmail,
+      updatedAt: settings.updatedAt,
+    });
+  }
 
   if (section === "community") {
     const settings = await getCommunitySettings();
@@ -79,6 +98,28 @@ export async function PATCH(req: NextRequest) {
 
   const { searchParams } = new URL(req.url);
   const section = searchParams.get("section");
+
+  if (section === "email") {
+    const body: Partial<EmailSettings> & { smtpPassword?: string } = await req.json();
+    const allowed: Partial<EmailSettings> = {};
+
+    if (typeof body.enabled === "boolean") allowed.enabled = body.enabled;
+    if (typeof body.smtpHost === "string") allowed.smtpHost = body.smtpHost.trim();
+    if (typeof body.smtpPort === "number") allowed.smtpPort = body.smtpPort;
+    if (typeof body.smtpUser === "string") allowed.smtpUser = body.smtpUser.trim();
+    if (typeof body.smtpPassword === "string" && body.smtpPassword.trim()) {
+      allowed.smtpPassword = body.smtpPassword.trim();
+    }
+    if (typeof body.smtpSecure === "boolean") allowed.smtpSecure = body.smtpSecure;
+    if (typeof body.senderName === "string") allowed.senderName = body.senderName.trim();
+    if (typeof body.senderEmail === "string") allowed.senderEmail = body.senderEmail.trim();
+
+    if (Object.keys(allowed).length === 0) {
+      return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+    }
+    await updateEmailSettings(allowed);
+    return NextResponse.json({ success: true });
+  }
 
   if (section === "community") {
     const body: Partial<CommunitySettings> = await req.json();

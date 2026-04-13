@@ -61,7 +61,7 @@ export default function HomePage() {
             )}
             {!loading && user && (
               <Link
-                href="/videos"
+                href="/inicio"
                 className="rounded-full bg-tech-blue px-6 py-2 text-sm font-semibold text-white shadow-lg transition-all hover:bg-tech-blue/80 hover:scale-105 active:scale-95"
               >
                 Acessar Portal
@@ -117,7 +117,7 @@ export default function HomePage() {
             )}
             {!loading && user && (
               <Link
-                href="/videos"
+                href="/inicio"
                 className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-10 py-4 text-lg font-bold text-deep-navy shadow-xl transition-all hover:bg-gray-100 hover:scale-105 active:scale-95 sm:w-auto"
               >
                 Ir para o Portal

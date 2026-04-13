@@ -4,12 +4,23 @@ import { getUserByUid, getSubscription, upsertSubscription } from "@/lib/firesto
 import { getStripeConfig } from "@/lib/stripe";
 import Stripe from "stripe";
 
-export async function POST() {
+export async function POST(req: Request) {
   const { userId } = await getServerAuth();
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const user = await getUserByUid(userId);
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+
+  // returnPath is an optional path (e.g. "/videos/abc") to redirect back to after payment
+  let returnPath: string | undefined;
+  try {
+    const body = await req.json();
+    if (typeof body?.returnPath === "string" && body.returnPath.startsWith("/")) {
+      returnPath = body.returnPath;
+    }
+  } catch {
+    // body may be empty — that's fine
+  }
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
@@ -37,8 +48,12 @@ export async function POST() {
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [{ price: priceId, quantity: 1 }],
-      success_url: `${baseUrl}/assinatura?success=1`,
-      cancel_url: `${baseUrl}/assinatura?cancelled=1`,
+      success_url: returnPath
+        ? `${baseUrl}/assinatura?success=1&return=${encodeURIComponent(returnPath)}`
+        : `${baseUrl}/assinatura?success=1`,
+      cancel_url: returnPath
+        ? `${baseUrl}${returnPath}`
+        : `${baseUrl}/assinatura?cancelled=1`,
       metadata: { userId: user.uid },
     });
 

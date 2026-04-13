@@ -70,7 +70,7 @@ export default function SignUpPage() {
           photoURL: result.user.photoURL,
         }),
       });
-      router.push("/videos");
+      router.push("/inicio");
     } catch (err: unknown) {
       const firebaseErr = err as { code?: string };
       if (firebaseErr.code === "auth/email-already-in-use") {
@@ -102,7 +102,7 @@ export default function SignUpPage() {
           photoURL: result.user.photoURL,
         }),
       });
-      router.push("/videos");
+      router.push("/inicio");
     } catch {
       setError("Erro ao entrar com Google.");
     } finally {

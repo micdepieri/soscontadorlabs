@@ -97,6 +97,7 @@ export interface FirestoreVideo {
   categoryId: string | null;
   tags: string[];
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -170,9 +171,11 @@ export interface FirestoreMaterial {
   description: string | null;
   type: "PDF" | "LINK" | "RESOURCE";
   url: string;
+  thumbnail: string | null;
   categoryId: string | null;
   tags: string[];
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -285,8 +288,10 @@ export interface FirestoreComment {
   authorAvatarUrl: string | null;
   videoId: string | null;
   materialId: string | null;
+  postId: string | null;
   parentId: string | null;
-  imageUrl?: string | null; // Added field for image attachments
+  imageUrl?: string | null;
+  mentions: string[]; // array of user UIDs mentioned in this comment
   isHidden: boolean;
   likes: string[]; // array of user UIDs who liked
   createdAt: string;
@@ -305,16 +310,17 @@ export async function getComments(
   };
   const field = fieldMapping[contentType];
   try {
+    // Single-field query only (avoids composite index requirement).
+    // isHidden and ordering are handled in memory.
     const snapshot = await db
       .collection("comments")
       .where(field, "==", contentId)
-      .where("isHidden", "==", false)
-      .orderBy("createdAt", "desc")
       .get();
 
-    const allComments = snapshot.docs.map(
-      (doc) => ({ id: doc.id, ...doc.data() }) as FirestoreComment
-    );
+    const allComments = snapshot.docs
+      .map((doc) => ({ id: doc.id, ...doc.data() }) as FirestoreComment)
+      .filter((c) => !c.isHidden)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
     // Separate top-level and replies
     const topLevel = allComments.filter((c) => !c.parentId);
@@ -327,14 +333,8 @@ export async function getComments(
         .filter((r) => r.parentId === comment.id)
         .sort((a, b) => a.createdAt.localeCompare(b.createdAt)),
     }));
-  } catch (error: any) {
-    if (error.message?.includes("requires an index")) {
-      console.warn(
-        "⚠️ Firestore Index required for comments. Please create it using the link in the console."
-      );
-    } else {
-      console.error("Error fetching comments:", error);
-    }
+  } catch (error: unknown) {
+    console.error("Error fetching comments:", error);
     return [];
   }
 }
@@ -346,12 +346,66 @@ export async function createComment(
   const now = new Date().toISOString();
   const ref = await db.collection("comments").add({
     ...data,
+    mentions: data.mentions || [],
     isHidden: false,
     likes: [],
     createdAt: now,
     updatedAt: now,
   });
-  return { id: ref.id, ...data, isHidden: false, likes: [], createdAt: now, updatedAt: now };
+  return { id: ref.id, ...data, mentions: data.mentions || [], isHidden: false, likes: [], createdAt: now, updatedAt: now };
+}
+
+// Notification helpers
+export interface FirestoreNotification {
+  id: string;
+  recipientId: string;
+  type: "mention";
+  fromUserId: string;
+  fromUserName: string | null;
+  fromUserAvatarUrl: string | null;
+  contentId: string;
+  contentType: "video" | "material" | "post";
+  commentId: string;
+  isRead: boolean;
+  createdAt: string;
+}
+
+export async function createNotification(
+  data: Omit<FirestoreNotification, "id" | "createdAt" | "isRead">
+) {
+  const db = getAdminFirestore();
+  await db.collection("notifications").add({
+    ...data,
+    isRead: false,
+    createdAt: new Date().toISOString(),
+  });
+}
+
+export async function getUserNotifications(userId: string): Promise<FirestoreNotification[]> {
+  const db = getAdminFirestore();
+  try {
+    const snapshot = await db
+      .collection("notifications")
+      .where("recipientId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .limit(20)
+      .get();
+    return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FirestoreNotification);
+  } catch {
+    return [];
+  }
+}
+
+export async function markNotificationsRead(userId: string): Promise<void> {
+  const db = getAdminFirestore();
+  const snapshot = await db
+    .collection("notifications")
+    .where("recipientId", "==", userId)
+    .where("isRead", "==", false)
+    .get();
+  const batch = db.batch();
+  snapshot.docs.forEach((doc) => batch.update(doc.ref, { isRead: true }));
+  await batch.commit();
 }
 
 export async function toggleCommentLike(commentId: string, uid: string): Promise<boolean> {
@@ -372,6 +426,24 @@ export async function toggleCommentLike(commentId: string, uid: string): Promise
     await ref.update({ likes: [...likes, uid] });
     return true;
   }
+}
+
+export async function updateComment(commentId: string, content: string): Promise<void> {
+  const db = getAdminFirestore();
+  await db.collection("comments").doc(commentId).update({
+    content,
+    updatedAt: new Date().toISOString(),
+  });
+}
+
+export async function deleteComment(commentId: string): Promise<void> {
+  const db = getAdminFirestore();
+  // Also delete replies
+  const replies = await db.collection("comments").where("parentId", "==", commentId).get();
+  const batch = db.batch();
+  replies.docs.forEach((doc) => batch.delete(doc.ref));
+  batch.delete(db.collection("comments").doc(commentId));
+  await batch.commit();
 }
 
 // Content Request helpers
@@ -509,6 +581,7 @@ export interface FirestorePost {
   categoryId: string | null;
   tags: string[];
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: string | null;
   createdAt: string;
   updatedAt: string;
@@ -692,6 +765,68 @@ export async function updateStripeSettings(data: Partial<StripeSettings>) {
     .collection("settings")
     .doc(STRIPE_SETTINGS_DOC)
     .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+// Email / SMTP Settings helpers
+
+export interface EmailSettings {
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPassword: string;
+  smtpSecure: boolean;
+  senderName: string;
+  senderEmail: string;
+  updatedAt: string;
+}
+
+const EMAIL_SETTINGS_DOC = "email_config";
+
+export async function getEmailSettings(): Promise<EmailSettings> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("settings").doc(EMAIL_SETTINGS_DOC).get();
+  if (!doc.exists) {
+    return {
+      enabled: false,
+      smtpHost: "",
+      smtpPort: 587,
+      smtpUser: "",
+      smtpPassword: "",
+      smtpSecure: false,
+      senderName: "",
+      senderEmail: "",
+      updatedAt: new Date().toISOString(),
+    };
+  }
+  const data = doc.data()!;
+  return {
+    enabled: data.enabled ?? false,
+    smtpHost: data.smtpHost ?? "",
+    smtpPort: data.smtpPort ?? 587,
+    smtpUser: data.smtpUser ?? "",
+    smtpPassword: data.smtpPassword ?? "",
+    smtpSecure: data.smtpSecure ?? false,
+    senderName: data.senderName ?? "",
+    senderEmail: data.senderEmail ?? "",
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+  };
+}
+
+export async function updateEmailSettings(data: Partial<EmailSettings>) {
+  const db = getAdminFirestore();
+  await db
+    .collection("settings")
+    .doc(EMAIL_SETTINGS_DOC)
+    .set({ ...data, updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+export async function getAllMemberEmails(): Promise<string[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db.collection("users").get();
+  return snapshot.docs
+    .map((doc) => (doc.data().email as string) ?? "")
+    .filter(Boolean);
 }
 
 // XP / Gamification helpers
@@ -899,6 +1034,69 @@ export async function getUserRating(userId: string, contentId: string) {
   return doc.data()!.value as number;
 }
 
+// Event helpers
+export interface FirestoreEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "WEBINAR" | "LIVE" | "WORKSHOP" | "OUTRO";
+  startDate: string; // ISO string
+  endDate: string | null; // ISO string
+  registrationUrl: string | null;
+  thumbnail: string | null;
+  isPremium: boolean;
+  publishedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getEvents(filters?: {
+  publishedOnly?: boolean;
+  upcoming?: boolean;
+}): Promise<FirestoreEvent[]> {
+  const db = getAdminFirestore();
+  // Fetch all and filter in memory to avoid composite index requirements
+  const snapshot = await db.collection("events").get();
+  let events = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as FirestoreEvent);
+
+  if (filters?.publishedOnly !== false) {
+    events = events.filter((e) => e.publishedAt !== null);
+  }
+  if (filters?.upcoming) {
+    const now = new Date().toISOString();
+    events = events.filter((e) => e.startDate >= now || (e.endDate != null && e.endDate >= now));
+  }
+
+  return events.sort((a, b) => a.startDate.localeCompare(b.startDate));
+}
+
+export async function getEventById(id: string): Promise<FirestoreEvent | null> {
+  const db = getAdminFirestore();
+  const doc = await db.collection("events").doc(id).get();
+  if (!doc.exists) return null;
+  return { id: doc.id, ...doc.data() } as FirestoreEvent;
+}
+
+export async function createEvent(data: Omit<FirestoreEvent, "id" | "createdAt" | "updatedAt">) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  const ref = await db.collection("events").add({ ...data, createdAt: now, updatedAt: now });
+  return { id: ref.id, ...data, createdAt: now, updatedAt: now };
+}
+
+export async function updateEvent(id: string, data: Partial<FirestoreEvent>) {
+  const db = getAdminFirestore();
+  const now = new Date().toISOString();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _, createdAt: __, ...updateData } = data;
+  await db.collection("events").doc(id).update({ ...updateData, updatedAt: now });
+}
+
+export async function deleteEvent(id: string) {
+  const db = getAdminFirestore();
+  await db.collection("events").doc(id).delete();
+}
+
 export async function getAllContentStats() {
   const db = getAdminFirestore();
   const snapshot = await db.collection("ratings").get();
@@ -917,7 +1115,56 @@ export async function getAllContentStats() {
   Object.keys(stats).forEach(id => {
     stats[id].average = parseFloat((stats[id].total / stats[id].count).toFixed(1));
   });
-  
+
   return stats;
+}
+
+// Favorites helpers
+export interface FirestoreFavorite {
+  contentId: string;
+  contentType: "video" | "post" | "material";
+  savedAt: string;
+}
+
+export async function getFavoritesByUser(uid: string): Promise<FirestoreFavorite[]> {
+  const db = getAdminFirestore();
+  const snapshot = await db
+    .collection("users")
+    .doc(uid)
+    .collection("favorites")
+    .orderBy("savedAt", "desc")
+    .get();
+  return snapshot.docs.map((doc) => doc.data() as FirestoreFavorite);
+}
+
+export async function addFavorite(uid: string, favorite: FirestoreFavorite) {
+  const db = getAdminFirestore();
+  await db
+    .collection("users")
+    .doc(uid)
+    .collection("favorites")
+    .doc(favorite.contentId)
+    .set(favorite);
+}
+
+export async function removeFavorite(uid: string, contentId: string) {
+  const db = getAdminFirestore();
+  await db
+    .collection("users")
+    .doc(uid)
+    .collection("favorites")
+    .doc(contentId)
+    .delete();
+}
+
+export async function isFavorited(uid: string, contentId: string): Promise<boolean> {
+  const db = getAdminFirestore();
+  const doc = await db
+    .collection("users")
+    .doc(uid)
+    .collection("favorites")
+    .doc(contentId)
+    .get();
+  return doc.exists;
 }
 

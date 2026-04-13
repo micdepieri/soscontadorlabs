@@ -15,6 +15,7 @@ import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import Thermometer from "@/components/thermometer";
 import ConsumeButton from "@/components/consume-button";
+import PremiumPaywallModal from "@/components/premium-paywall-modal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -56,27 +57,39 @@ export default async function MaterialPage({ params }: Props) {
 
   if (material.isPremium && !isSubscribed) {
     return (
-      <div className="mx-auto max-w-2xl py-20 text-center">
-        <div className="mb-6 text-amber-500">
-          <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
+      <div className="mx-auto max-w-4xl">
+        {/* Visible header */}
+        <div className="mb-6 flex items-center gap-2">
+          <span className="rounded-full bg-tech-blue/20 px-3 py-1 text-xs font-bold text-cyan-ia">
+            {typeLabels[material.type]}
+          </span>
+          <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-400 uppercase tracking-wider">
+            Premium
+          </span>
         </div>
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">{material.title}</h1>
-        <p className="mb-8 text-gray-600">
-          Este material está disponível apenas para membros premium.
-        </p>
-        <Link
-          href="/assinatura"
-          className="inline-block rounded-lg bg-indigo-600 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
-        >
-          Assinar agora
-        </Link>
+
+        {/* Blurred card + paywall overlay */}
+        <div className="relative overflow-hidden rounded-2xl min-h-[320px]">
+          {/* Blurred preview */}
+          <div className="pointer-events-none select-none blur-sm brightness-50">
+            <div className="rounded-2xl border border-app-border bg-midnight-blue p-8">
+              {material.thumbnail && (
+                <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl">
+                  <img src={material.thumbnail} alt={material.title} className="h-full w-full object-cover" />
+                </div>
+              )}
+              <h1 className="mb-2 text-2xl font-black text-cloud-white">{material.title}</h1>
+              {material.description && (
+                <p className="mb-6 leading-relaxed text-cloud-white/70">{material.description}</p>
+              )}
+              <div className="inline-flex items-center gap-2 rounded-xl bg-indigo-600/40 px-6 py-3 text-sm font-bold text-white">
+                {material.type === "PDF" ? "Baixar PDF" : "Acessar recurso"}
+              </div>
+            </div>
+          </div>
+          {/* Paywall modal overlay */}
+          <PremiumPaywallModal contentTitle={material.title} returnPath={`/materiais/${id}`} />
+        </div>
       </div>
     );
   }

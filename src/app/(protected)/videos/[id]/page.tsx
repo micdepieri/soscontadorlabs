@@ -16,6 +16,7 @@ import CommentsSection from "@/components/comments-section";
 import VideoEmbed from "@/components/video-embed";
 import Thermometer from "@/components/thermometer";
 import ConsumeButton from "@/components/consume-button";
+import PremiumPaywallModal from "@/components/premium-paywall-modal";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -51,27 +52,45 @@ export default async function VideoPage({ params }: Props) {
 
   if (video.isPremium && !isSubscribed) {
     return (
-      <div className="mx-auto max-w-2xl py-20 text-center">
-        <div className="mb-6 text-amber-500">
-          <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-            />
-          </svg>
+      <div className="mx-auto max-w-4xl">
+        {/* Visible header — always shown so user knows what they're missing */}
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="rounded-md bg-tech-blue/30 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-cyan-ia">
+              Vídeo
+            </span>
+            <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold text-amber-400 uppercase tracking-wider">
+              Premium
+            </span>
+          </div>
+          <h1 className="text-2xl font-black text-cloud-white">{video.title}</h1>
+          {video.description && (
+            <p className="mt-2 text-cloud-white/50">{video.description}</p>
+          )}
         </div>
-        <h1 className="mb-2 text-2xl font-bold text-gray-900">{video.title}</h1>
-        <p className="mb-8 text-gray-600">
-          Este vídeo está disponível apenas para membros premium.
-        </p>
-        <Link
-          href="/assinatura"
-          className="inline-block rounded-lg bg-indigo-600 px-8 py-3 font-medium text-white transition-colors hover:bg-indigo-700"
-        >
-          Assinar agora
-        </Link>
+
+        {/* Blurred preview + paywall overlay */}
+        <div className="relative overflow-hidden rounded-2xl min-h-[360px]">
+          {/* Blurred thumbnail placeholder */}
+          <div className="pointer-events-none select-none">
+            {video.thumbnail ? (
+              <div className="aspect-video w-full overflow-hidden rounded-2xl blur-sm brightness-50">
+                <img src={video.thumbnail} alt={video.title} className="h-full w-full object-cover" />
+              </div>
+            ) : (
+              <div className="flex aspect-video w-full items-center justify-center rounded-2xl bg-gradient-to-br from-indigo-900/60 to-purple-900/60 blur-sm">
+                <svg className="h-20 w-20 text-cyan-ia/20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+            )}
+          </div>
+          {/* Paywall modal overlay */}
+          <PremiumPaywallModal contentTitle={video.title} returnPath={`/videos/${id}`} />
+        </div>
       </div>
     );
   }

@@ -79,5 +79,11 @@ service cloud.firestore {
       allow read: if false;
       allow write: if false;
     }
+
+    // Notifications - users can only read their own; server writes them
+    match /notifications/{notifId} {
+      allow read: if request.auth != null && resource.data.recipientId == request.auth.uid;
+      allow write: if false; // server only via /api/notifications
+    }
   }
 }

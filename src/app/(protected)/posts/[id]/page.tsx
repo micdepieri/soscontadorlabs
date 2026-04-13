@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import { getServerAuth } from "@/lib/server-auth";
-import { getPostById, getUserByUid, getSubscription, getCategories, getContentRatingStats, getUserRating, getUserContentProgress } from "@/lib/firestore";
+import { getPostById, getUserByUid, getSubscription, getCategories, getContentRatingStats, getUserRating, getUserContentProgress, getComments } from "@/lib/firestore";
 import Link from "next/link";
 import CommentsSection from "@/components/comments-section";
 import Thermometer from "@/components/thermometer";
 import ConsumeButton from "@/components/consume-button";
+import PremiumPaywallModal from "@/components/premium-paywall-modal";
 import type { Metadata } from "next";
 
 interface Props {
@@ -48,12 +49,13 @@ export default async function PostPage({ params }: Props) {
   const { id } = await params;
   const { userId } = await getServerAuth();
 
-  const [post, categories, ratingStats, userRating, alreadyConsumed] = await Promise.all([
+  const [post, categories, ratingStats, userRating, alreadyConsumed, comments] = await Promise.all([
     getPostById(id),
     getCategories(),
     getContentRatingStats(id),
     userId ? getUserRating(userId, id) : null,
     userId ? getUserContentProgress(userId, id) : false,
+    getComments(id, "post"),
   ]);
 
   if (!post || !post.publishedAt) notFound();
@@ -63,24 +65,60 @@ export default async function PostPage({ params }: Props) {
   const isSubscribed = sub?.status === "ACTIVE" || dbUser?.role === "ADMIN";
 
   if (post.isPremium && !isSubscribed) {
+    // First paragraph of content for the blurred preview
+    const previewText = post.content.split("\n\n").slice(0, 2).join("\n\n").replace(/[#*`]/g, "");
+
     return (
-      <div className="mx-auto max-w-2xl py-24 text-center animate-in fade-in zoom-in-95">
-        <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-900/30 text-amber-400 shadow-sm">
-          <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
+      <article className="mx-auto max-w-3xl py-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        {/* Full visible header */}
+        <header className="mb-10 border-b border-app-border pb-10">
+          <div className="flex items-center gap-3 mb-5">
+            {post.isPremium && (
+              <span className="rounded-full bg-amber-500/20 px-3 py-1 text-xs font-bold text-amber-400 tracking-wide uppercase">
+                Premium
+              </span>
+            )}
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-cloud-white tracking-tight leading-tight mb-6">
+            {post.title}
+          </h1>
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 shrink-0 rounded-full bg-app-chip overflow-hidden ring-2 ring-midnight-blue">
+              {post.authorAvatarUrl ? (
+                <img src={post.authorAvatarUrl} alt={post.authorName || "Autor"} className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-tech-blue/30 text-cyan-ia font-bold">
+                  {post.authorName?.[0] || "S"}
+                </div>
+              )}
+            </div>
+            <div>
+              <p className="text-sm font-bold text-cloud-white">{post.authorName || "Time SOS Contador"}</p>
+              <p className="text-xs text-cloud-white/50">
+                {new Date(post.publishedAt || post.createdAt).toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" })}
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* Blurred content preview + paywall overlay */}
+        <div className="relative overflow-hidden rounded-2xl min-h-[400px]">
+          {/* Blurred text preview */}
+          <div className="pointer-events-none select-none px-2 blur-sm brightness-50">
+            {post.thumbnail && (
+              <div className="mb-6 aspect-video w-full overflow-hidden rounded-xl">
+                <img src={post.thumbnail} alt={post.title} className="h-full w-full object-cover" />
+              </div>
+            )}
+            <p className="mb-5 leading-relaxed text-cloud-white/85 text-lg">{previewText}</p>
+            <p className="mb-5 leading-relaxed text-cloud-white/85 text-lg">
+              Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.
+            </p>
+          </div>
+          {/* Paywall modal overlay */}
+          <PremiumPaywallModal contentTitle={post.title} returnPath={`/posts/${id}`} />
         </div>
-        <h1 className="mb-4 text-3xl font-black text-cloud-white">{post.title}</h1>
-        <p className="mb-10 text-cloud-white/70 text-lg">
-          Este conteúdo exclusivo faz parte do nosso plano premium. Assine hoje para acessar este e centenas de outros códigos e estratégias.
-        </p>
-        <Link
-          href="/assinatura"
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-10 py-4 font-bold text-white shadow-xl shadow-indigo-100 transition-all hover:bg-indigo-700 active:scale-95"
-        >
-          Destravar agora
-        </Link>
-      </div>
+      </article>
     );
   }
 
@@ -168,7 +206,7 @@ export default async function PostPage({ params }: Props) {
           <CommentsSection
             contentId={post.id}
             contentType="post"
-            comments={[]}
+            comments={comments as any}
             currentUserId={userId || null}
             isLoggedIn={!!userId}
           />

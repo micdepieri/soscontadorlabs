@@ -18,6 +18,7 @@ interface Video {
   url: string;
   description: string | null;
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: Date | null;
   category: Category | null;
   tags: string[];
@@ -30,6 +31,7 @@ interface Material {
   type: string;
   description: string | null;
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: Date | null;
   category: Category | null;
   tags: string[];
@@ -41,12 +43,13 @@ interface Post {
   slug: string;
   content: string;
   isPremium: boolean;
+  isPinned?: boolean;
   publishedAt: Date | null;
   category: Category | null;
   tags: string[];
 }
 
-type Tab = "videos" | "materials" | "posts" | "categories" | "demands" | "settings" | "members" | "analytics";
+type Tab = "videos" | "materials" | "posts" | "categories" | "demands" | "settings" | "members" | "analytics" | "events";
 
 interface AISettingsData {
   provider: "anthropic" | "openai";
@@ -63,6 +66,19 @@ interface CommunitySettingsData {
   communityName: string;
   communityTagline: string;
   updatedAt: string;
+}
+
+interface EmailSettingsData {
+  enabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpUser: string;
+  smtpPasswordSet: boolean;
+  smtpPasswordMasked: string;
+  smtpSecure: boolean;
+  senderName: string;
+  senderEmail: string;
+  updatedAt?: string;
 }
 
 interface StripeSettingsData {
@@ -102,6 +118,19 @@ interface ContentRequest {
   createdAt: string;
 }
 
+interface EventData {
+  id: string;
+  title: string;
+  description: string | null;
+  type: "WEBINAR" | "LIVE" | "WORKSHOP" | "OUTRO";
+  startDate: string;
+  endDate: string | null;
+  registrationUrl: string | null;
+  thumbnail: string | null;
+  isPremium: boolean;
+  publishedAt: string | null;
+}
+
 export default function AdminTabs({
   videos,
   materials,
@@ -111,8 +140,10 @@ export default function AdminTabs({
   aiSettings,
   stripeSettings,
   communitySettings = { communityName: "Comunidade", communityTagline: "Portal da Comunidade", updatedAt: "" },
+  emailSettings,
   members,
   ratingStats,
+  events = [],
 }: {
   videos: Video[];
   materials: Material[];
@@ -122,8 +153,10 @@ export default function AdminTabs({
   aiSettings: AISettingsData;
   stripeSettings: StripeSettingsData;
   communitySettings: CommunitySettingsData;
+  emailSettings: EmailSettingsData;
   members: Member[];
   ratingStats: Record<string, { total: number; count: number; average: number }>;
+  events?: EventData[];
 }) {
   const searchParams = useSearchParams();
   const [tab, setTab] = useState<Tab>("videos");
@@ -133,7 +166,7 @@ export default function AdminTabs({
     const t = searchParams.get("tab") as Tab;
     if (
       t &&
-      (["videos", "materials", "posts", "categories", "demands", "settings", "members", "analytics"] as Tab[]).includes(t)
+      (["videos", "materials", "posts", "categories", "demands", "settings", "members", "analytics", "events"] as Tab[]).includes(t)
     ) {
       setTab(t);
     }
@@ -153,7 +186,7 @@ export default function AdminTabs({
       {/* Tab nav */}
       <div className="mb-8 border-b border-app-border overflow-x-auto">
         <div className="flex gap-6 min-w-max pb-px">
-          {(["videos", "materials", "posts", "categories", "demands", "settings", "members", "analytics"] as Tab[]).map(
+          {(["videos", "materials", "posts", "categories", "demands", "events", "settings", "members", "analytics"] as Tab[]).map(
             (t) => (
               <button
                 key={t}
@@ -174,6 +207,8 @@ export default function AdminTabs({
                   ? "Categorias"
                   : t === "demands"
                   ? "Demandas IA"
+                  : t === "events"
+                  ? "Eventos"
                   : t === "members"
                   ? "Membros"
                   : t === "analytics"
@@ -216,18 +251,21 @@ export default function AdminTabs({
         <ContentRequestsTab requests={contentRequests} onSave={() => router.refresh()} />
       )}
       {tab === "settings" && (
-        <div className="space-y-12">
-          <CommunitySettingsTab initialSettings={communitySettings} onSave={() => router.refresh()} />
-          <hr className="border-app-border" />
-          <AISettingsTab initialSettings={aiSettings} onSave={() => router.refresh()} />
-          <hr className="border-app-border" />
-          <StripeSettingsTab initialSettings={stripeSettings} onSave={() => router.refresh()} />
-        </div>
+        <SettingsSection
+          aiSettings={aiSettings}
+          stripeSettings={stripeSettings}
+          communitySettings={communitySettings}
+          emailSettings={emailSettings}
+          onSave={() => router.refresh()}
+        />
       )}
       {tab === "members" && (
         <MembersTab initialMembers={members} onSave={() => router.refresh()} />
       )}
       {tab === "analytics" && <AdminAnalyticsTab />}
+      {tab === "events" && (
+        <EventTab events={events} onSave={() => router.refresh()} />
+      )}
     </div>
   );
 }
@@ -310,6 +348,15 @@ function VideoTab({
       isPremium: false,
       publish: true,
     });
+  }
+
+  async function handlePin(video: Video) {
+    await fetch(`/api/admin/videos/${video.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPinned: !video.isPinned }),
+    });
+    onSave();
   }
 
   async function handleDelete(id: string) {
@@ -466,6 +513,11 @@ function VideoTab({
             </div>
             
             <div className="ml-4 flex shrink-0 items-center gap-4">
+              {video.isPinned && (
+                <span className="rounded-full bg-cyan-ia/20 px-2 py-0.5 text-[10px] font-bold text-cyan-ia uppercase tracking-tighter">
+                  Fixado
+                </span>
+              )}
               {video.isPremium && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 uppercase tracking-tighter">
                   Premium
@@ -477,6 +529,13 @@ function VideoTab({
                 </span>
               )}
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handlePin(video)}
+                  title={video.isPinned ? "Desafixar" : "Fixar no topo"}
+                  className={`text-xs font-medium transition-colors ${video.isPinned ? "text-cyan-ia hover:text-cyan-ia/70" : "text-cloud-white/40 hover:text-cyan-ia"}`}
+                >
+                  {video.isPinned ? "Desafixar" : "Fixar"}
+                </button>
                 <button
                   onClick={() => handleEdit(video)}
                   className="text-xs font-medium text-cyan-ia hover:text-cyan-ia/70"
@@ -606,6 +665,15 @@ function MaterialTab({
       isPremium: false,
       publish: true,
     });
+  }
+
+  async function handlePin(material: Material) {
+    await fetch(`/api/admin/materials/${material.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPinned: !material.isPinned }),
+    });
+    onSave();
   }
 
   async function handleDelete(id: string) {
@@ -791,6 +859,11 @@ function MaterialTab({
             </div>
 
             <div className="ml-4 flex shrink-0 items-center gap-4">
+              {material.isPinned && (
+                <span className="rounded-full bg-cyan-ia/20 px-2 py-0.5 text-[10px] font-bold text-cyan-ia uppercase tracking-tighter">
+                  Fixado
+                </span>
+              )}
               {material.isPremium && (
                 <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700 uppercase tracking-tighter">
                   Premium
@@ -802,6 +875,12 @@ function MaterialTab({
                 </span>
               )}
               <div className="flex items-center gap-3">
+                <button
+                  onClick={() => handlePin(material)}
+                  className={`text-xs font-medium transition-colors ${material.isPinned ? "text-cyan-ia hover:text-cyan-ia/70" : "text-cloud-white/40 hover:text-cyan-ia"}`}
+                >
+                  {material.isPinned ? "Desafixar" : "Fixar"}
+                </button>
                 <button
                   onClick={() => handleEdit(material)}
                   className="text-xs font-medium text-cyan-ia hover:text-cyan-ia/70"
@@ -1140,6 +1219,15 @@ function PostTab({
     setShowForm(true);
   }
 
+  async function handlePin(post: Post) {
+    await fetch(`/api/admin/posts/${post.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPinned: !post.isPinned }),
+    });
+    onSave();
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Tem certeza que deseja excluir esta postagem?")) return;
     await fetch(`/api/admin/posts/${id}`, { method: "DELETE" });
@@ -1356,6 +1444,12 @@ function PostTab({
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <button
+                        onClick={() => handlePin(post)}
+                        className={`text-sm font-medium transition-colors ${post.isPinned ? "text-cyan-ia hover:text-cyan-ia/70" : "text-cloud-white/40 hover:text-cyan-ia"}`}
+                      >
+                        {post.isPinned ? "Desafixar" : "Fixar"}
+                      </button>
+                      <button
                         onClick={() => handleEdit(post)}
                         className="text-sm font-medium text-cyan-ia hover:text-cyan-ia/70"
                       >
@@ -1395,6 +1489,57 @@ const OPENAI_MODELS = [
   { value: "MiniMax-01", label: "MiniMax 01" },
   { value: "__custom__", label: "Personalizado..." },
 ];
+
+type SettingsSubTab = "community" | "ai" | "stripe" | "email";
+
+function SettingsSection({
+  aiSettings,
+  stripeSettings,
+  communitySettings,
+  emailSettings,
+  onSave,
+}: {
+  aiSettings: AISettingsData;
+  stripeSettings: StripeSettingsData;
+  communitySettings: CommunitySettingsData;
+  emailSettings: EmailSettingsData;
+  onSave: () => void;
+}) {
+  const [sub, setSub] = useState<SettingsSubTab>("community");
+
+  const subTabs: { key: SettingsSubTab; label: string }[] = [
+    { key: "community", label: "Comunidade" },
+    { key: "ai",        label: "Assistente IA" },
+    { key: "stripe",    label: "Stripe" },
+    { key: "email",     label: "E-mail" },
+  ];
+
+  return (
+    <div>
+      {/* Sub-nav */}
+      <div className="mb-8 flex gap-1 rounded-xl border border-app-border bg-midnight-blue p-1">
+        {subTabs.map(({ key, label }) => (
+          <button
+            key={key}
+            onClick={() => setSub(key)}
+            className={`flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
+              sub === key
+                ? "bg-tech-blue text-white shadow"
+                : "text-cloud-white/50 hover:text-cloud-white"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {sub === "community" && <CommunitySettingsTab initialSettings={communitySettings} onSave={onSave} />}
+      {sub === "ai"        && <AISettingsTab        initialSettings={aiSettings}        onSave={onSave} />}
+      {sub === "stripe"    && <StripeSettingsTab    initialSettings={stripeSettings}    onSave={onSave} />}
+      {sub === "email"     && <EmailSettingsTab     initialSettings={emailSettings}     onSave={onSave} />}
+    </div>
+  );
+}
 
 function AISettingsTab({
   initialSettings,
@@ -1948,6 +2093,229 @@ function StripeSettingsTab({
   );
 }
 
+function EmailSettingsTab({
+  initialSettings,
+  onSave,
+}: {
+  initialSettings: EmailSettingsData;
+  onSave: () => void;
+}) {
+  const [enabled, setEnabled] = useState(initialSettings.enabled);
+  const [smtpHost, setSmtpHost] = useState(initialSettings.smtpHost);
+  const [smtpPort, setSmtpPort] = useState(String(initialSettings.smtpPort || 587));
+  const [smtpUser, setSmtpUser] = useState(initialSettings.smtpUser);
+  const [smtpPassword, setSmtpPassword] = useState("");
+  const [smtpSecure, setSmtpSecure] = useState(initialSettings.smtpSecure);
+  const [senderName, setSenderName] = useState(initialSettings.senderName);
+  const [senderEmail, setSenderEmail] = useState(initialSettings.senderEmail);
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    setSaveMsg(null);
+
+    const payload: Record<string, string | number | boolean> = {
+      enabled,
+      smtpHost: smtpHost.trim(),
+      smtpPort: Number(smtpPort) || 587,
+      smtpUser: smtpUser.trim(),
+      smtpSecure,
+      senderName: senderName.trim(),
+      senderEmail: senderEmail.trim(),
+    };
+    if (smtpPassword.trim()) payload.smtpPassword = smtpPassword.trim();
+
+    const res = await fetch("/api/admin/settings?section=email", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    setSaving(false);
+    if (res.ok) {
+      setSaveMsg("Configurações de e-mail salvas com sucesso!");
+      setSmtpPassword("");
+      onSave();
+    } else {
+      const err = await res.json().catch(() => ({}));
+      setSaveMsg(`Erro: ${err.error || "Falha ao salvar"}`);
+    }
+  }
+
+  return (
+    <div className="max-w-xl">
+      <div className="mb-6">
+        <h2 className="font-semibold text-cloud-white">Notificações por E-mail</h2>
+        <p className="mt-1 text-sm text-cloud-white/50">
+          Configure um servidor SMTP para enviar e-mails aos membros sempre que um novo conteúdo
+          for publicado. A senha é armazenada com segurança no Firestore e nunca exposta ao browser.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Ativar / desativar */}
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm">
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={enabled}
+                onChange={(e) => setEnabled(e.target.checked)}
+              />
+              <div
+                className={`h-6 w-11 rounded-full transition-colors ${
+                  enabled ? "bg-cyan-ia" : "bg-app-chip"
+                }`}
+              />
+              <div
+                className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  enabled ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </div>
+            <span className="text-sm font-medium text-cloud-white">
+              {enabled ? "Notificações ativadas" : "Notificações desativadas"}
+            </span>
+          </label>
+        </div>
+
+        {/* Servidor SMTP */}
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-cloud-white">Servidor SMTP</h3>
+          <p className="text-xs text-cloud-white/50">
+            Deixe o campo de senha em branco para manter o valor atual.
+          </p>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="col-span-2">
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Host</label>
+              <input
+                type="text"
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="smtp.gmail.com"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Porta</label>
+              <input
+                type="number"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
+                placeholder="587"
+                className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">Usuário (e-mail de login)</label>
+            <input
+              type="text"
+              value={smtpUser}
+              onChange={(e) => setSmtpUser(e.target.value)}
+              placeholder="noreply@suacomunidade.com.br"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 flex items-center gap-2 text-xs font-medium text-cloud-white/70">
+              Senha
+              {initialSettings.smtpPasswordSet && (
+                <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+                  Configurada
+                </span>
+              )}
+            </label>
+            {initialSettings.smtpPasswordSet && (
+              <p className="mb-1.5 font-mono text-xs text-cloud-white/40">{initialSettings.smtpPasswordMasked}</p>
+            )}
+            <input
+              type="password"
+              value={smtpPassword}
+              onChange={(e) => setSmtpPassword(e.target.value)}
+              placeholder={initialSettings.smtpPasswordSet ? "Nova senha (deixe vazio para manter)" : "Senha SMTP"}
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={smtpSecure}
+              onChange={(e) => setSmtpSecure(e.target.checked)}
+              className="h-4 w-4 rounded border-app-border"
+            />
+            <span className="text-xs text-cloud-white/70">Usar TLS/SSL (porta 465)</span>
+          </label>
+        </div>
+
+        {/* Remetente */}
+        <div className="rounded-xl border border-app-border bg-midnight-blue p-5 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-cloud-white">Remetente</h3>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">Nome do remetente</label>
+            <input
+              type="text"
+              value={senderName}
+              onChange={(e) => setSenderName(e.target.value)}
+              placeholder="Comunidade"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-xs font-medium text-cloud-white/70">E-mail do remetente</label>
+            <input
+              type="email"
+              value={senderEmail}
+              onChange={(e) => setSenderEmail(e.target.value)}
+              placeholder="noreply@suacomunidade.com.br"
+              className="w-full rounded-lg border border-app-border px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-cyan-ia focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Ações */}
+        <div className="flex items-center gap-4">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white hover:bg-tech-blue/80 disabled:opacity-60"
+          >
+            {saving ? "Salvando..." : "Salvar configurações de e-mail"}
+          </button>
+          {saveMsg && (
+            <p className={`text-sm ${saveMsg.startsWith("Erro") ? "text-red-600" : "text-green-600"}`}>
+              {saveMsg}
+            </p>
+          )}
+        </div>
+
+        {/* Status resumo */}
+        {(initialSettings.smtpHost || initialSettings.smtpUser) && (
+          <div className="rounded-lg bg-midnight-blue border border-app-border px-4 py-3 text-xs text-cloud-white/50 space-y-1">
+            <p className="font-medium text-cloud-white/70">Status atual</p>
+            <p>Notificações: {initialSettings.enabled ? "✓ Ativadas" : "✗ Desativadas"}</p>
+            <p>Host SMTP: {initialSettings.smtpHost ? <span className="font-mono">{initialSettings.smtpHost}:{initialSettings.smtpPort}</span> : "✗ Não configurado"}</p>
+            <p>Usuário: {initialSettings.smtpUser ? <span className="font-mono">{initialSettings.smtpUser}</span> : "✗ Não configurado"}</p>
+            <p>Senha: {initialSettings.smtpPasswordSet ? "✓ Configurada" : "✗ Não configurada"}</p>
+            {initialSettings.updatedAt && (
+              <p>Atualizado em: {new Date(initialSettings.updatedAt).toLocaleString("pt-BR")}</p>
+            )}
+          </div>
+        )}
+      </form>
+    </div>
+  );
+}
+
 const SUB_STATUS_LABELS: Record<string, string> = {
   ACTIVE: "Ativo",
   INACTIVE: "Inativo",
@@ -2297,6 +2665,319 @@ function MembersTab({
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+// ── Events Tab ────────────────────────────────────────────────────────────────
+
+const EVENT_TYPES = ["WEBINAR", "LIVE", "WORKSHOP", "OUTRO"] as const;
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  WEBINAR: "Webinário",
+  LIVE: "Live",
+  WORKSHOP: "Workshop",
+  OUTRO: "Outro",
+};
+
+function toLocalDatetimeValue(isoString: string | null | undefined): string {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function EventTab({ events, onSave }: { events: EventData[]; onSave: () => void }) {
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    type: "WEBINAR" as (typeof EVENT_TYPES)[number],
+    startDate: "",
+    endDate: "",
+    registrationUrl: "",
+    thumbnail: "",
+    isPremium: false,
+    publish: true,
+  });
+
+  function handleEdit(event: EventData) {
+    setEditingId(event.id);
+    setForm({
+      title: event.title,
+      description: event.description || "",
+      type: event.type,
+      startDate: toLocalDatetimeValue(event.startDate),
+      endDate: toLocalDatetimeValue(event.endDate),
+      registrationUrl: event.registrationUrl || "",
+      thumbnail: event.thumbnail || "",
+      isPremium: event.isPremium,
+      publish: !!event.publishedAt,
+    });
+    setShowForm(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleCancel() {
+    setShowForm(false);
+    setEditingId(null);
+    setForm({
+      title: "",
+      description: "",
+      type: "WEBINAR",
+      startDate: "",
+      endDate: "",
+      registrationUrl: "",
+      thumbnail: "",
+      isPremium: false,
+      publish: true,
+    });
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    const url = editingId ? `/api/admin/events/${editingId}` : "/api/admin/events";
+    const method = editingId ? "PATCH" : "POST";
+    await fetch(url, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: form.title,
+        description: form.description || null,
+        type: form.type,
+        startDate: form.startDate ? new Date(form.startDate).toISOString() : null,
+        endDate: form.endDate ? new Date(form.endDate).toISOString() : null,
+        registrationUrl: form.registrationUrl || null,
+        thumbnail: form.thumbnail || null,
+        isPremium: form.isPremium,
+        publishedAt: form.publish,
+      }),
+    });
+    setSaving(false);
+    handleCancel();
+    onSave();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm("Remover este evento?")) return;
+    await fetch(`/api/admin/events/${id}`, { method: "DELETE" });
+    onSave();
+  }
+
+  const sorted = [...events].sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+  return (
+    <div>
+      <div className="mb-6 flex items-center justify-between">
+        <h2 className="font-semibold text-cloud-white">{events.length} evento{events.length !== 1 ? "s" : ""}</h2>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="rounded-lg bg-tech-blue px-4 py-2 text-sm text-white transition-colors hover:bg-tech-blue/80"
+          >
+            + Criar evento
+          </button>
+        )}
+      </div>
+
+      {showForm && (
+        <form
+          onSubmit={handleSubmit}
+          className="mb-8 space-y-4 rounded-xl border border-app-border bg-midnight-blue p-6"
+        >
+          <h3 className="text-sm font-bold text-cyan-ia">
+            {editingId ? "Editar evento" : "Novo evento"}
+          </h3>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Título *</label>
+              <input
+                required
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+                placeholder="Ex: Webinário: IA para Contadores"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Tipo</label>
+              <select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value as (typeof EVENT_TYPES)[number] })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+              >
+                {EVENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{EVENT_TYPE_LABELS[t]}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Início *</label>
+              <input
+                required
+                type="datetime-local"
+                value={form.startDate}
+                onChange={(e) => setForm({ ...form, startDate: e.target.value })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Término (opcional)</label>
+              <input
+                type="datetime-local"
+                value={form.endDate}
+                onChange={(e) => setForm({ ...form, endDate: e.target.value })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Link de inscrição</label>
+              <input
+                type="url"
+                value={form.registrationUrl}
+                onChange={(e) => setForm({ ...form, registrationUrl: e.target.value })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Thumbnail (URL)</label>
+              <input
+                type="url"
+                value={form.thumbnail}
+                onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-xs font-medium text-cloud-white/70">Descrição</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                rows={3}
+                className="w-full rounded-lg border border-app-border bg-deep-navy px-3 py-2 text-sm text-cloud-white focus:ring-1 focus:ring-cyan-ia focus:outline-none resize-none"
+                placeholder="Descreva o evento..."
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-6">
+            <label className="flex items-center gap-2 text-sm text-cloud-white/70 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.isPremium}
+                onChange={(e) => setForm({ ...form, isPremium: e.target.checked })}
+                className="rounded border-app-border bg-deep-navy accent-cyan-ia"
+              />
+              Premium
+            </label>
+            <label className="flex items-center gap-2 text-sm text-cloud-white/70 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.publish}
+                onChange={(e) => setForm({ ...form, publish: e.target.checked })}
+                className="rounded border-app-border bg-deep-navy accent-cyan-ia"
+              />
+              Publicar agora
+            </label>
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-lg bg-tech-blue px-6 py-2 text-sm font-semibold text-white disabled:opacity-60 hover:bg-tech-blue/80 transition-colors"
+            >
+              {saving ? "Salvando..." : editingId ? "Salvar alterações" : "Criar evento"}
+            </button>
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="rounded-lg border border-app-border px-5 py-2 text-sm text-cloud-white/60 hover:bg-midnight-blue transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
+
+      {sorted.length === 0 ? (
+        <p className="py-12 text-center text-cloud-white/40">Nenhum evento criado ainda.</p>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((event) => (
+            <div
+              key={event.id}
+              className="flex items-start gap-4 rounded-xl border border-app-border bg-midnight-blue p-4"
+            >
+              <div className="flex-shrink-0 text-center">
+                <div className="flex h-14 w-14 flex-col items-center justify-center rounded-lg bg-deep-navy">
+                  <span className="text-xl font-bold text-cyan-ia leading-none">
+                    {new Date(event.startDate).getDate()}
+                  </span>
+                  <span className="text-[10px] font-semibold uppercase text-cloud-white/50 mt-0.5">
+                    {new Date(event.startDate).toLocaleString("pt-BR", { month: "short" })}
+                  </span>
+                </div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <span className="text-[10px] font-bold uppercase text-cyan-ia">
+                    {EVENT_TYPE_LABELS[event.type]}
+                  </span>
+                  {event.isPremium && (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold text-amber-600 border border-amber-100 uppercase">
+                      Premium
+                    </span>
+                  )}
+                  {event.publishedAt ? (
+                    <span className="rounded-full bg-green-500/20 px-2 py-0.5 text-[10px] font-bold text-green-400 uppercase">
+                      Publicado
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-yellow-500/20 px-2 py-0.5 text-[10px] font-bold text-yellow-400 uppercase">
+                      Rascunho
+                    </span>
+                  )}
+                </div>
+                <p className="font-semibold text-cloud-white truncate">{event.title}</p>
+                <p className="text-xs text-cloud-white/50 mt-0.5">
+                  {new Date(event.startDate).toLocaleString("pt-BR", {
+                    day: "2-digit", month: "short", year: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                    timeZone: "America/Sao_Paulo",
+                  })}
+                  {event.endDate && ` – ${new Date(event.endDate).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", timeZone: "America/Sao_Paulo" })}`}
+                </p>
+              </div>
+              <div className="flex gap-2 flex-shrink-0">
+                <button
+                  onClick={() => handleEdit(event)}
+                  className="rounded-lg border border-app-border px-3 py-1.5 text-xs text-cloud-white/60 hover:text-cloud-white hover:bg-deep-navy transition-colors"
+                >
+                  Editar
+                </button>
+                <button
+                  onClick={() => handleDelete(event.id)}
+                  className="rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 transition-colors"
+                >
+                  Excluir
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

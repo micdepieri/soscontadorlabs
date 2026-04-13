@@ -71,7 +71,7 @@ function SignInContent() {
         throw new Error("Erro ao sincronizar dados do usuário.");
       }
 
-      const redirect = searchParams.get("redirect") || "/videos";
+      const redirect = searchParams.get("redirect") || "/inicio";
       router.push(redirect);
     } catch (err: any) {
       setError(err.message || "Email ou senha incorretos.");
@@ -103,7 +103,7 @@ function SignInContent() {
         throw new Error("Erro ao sincronizar dados do Google.");
       }
 
-      const redirect = searchParams.get("redirect") || "/videos";
+      const redirect = searchParams.get("redirect") || "/inicio";
       router.push(redirect);
     } catch (err: any) {
       setError(err.message || "Erro ao entrar com Google.");
