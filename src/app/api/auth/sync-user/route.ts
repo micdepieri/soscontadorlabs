@@ -27,12 +27,12 @@ export async function POST(req: NextRequest) {
         updatedAt: new Date().toISOString(),
       });
     } else {
-      const isAdmin = email === "michael@mappisc.com.br";
+      // Preserve the existing role — never overwrite a role that was set by an admin.
+      // Only update profile fields that may have changed (email, name, avatar).
       await userRef.update({
         email,
         name: displayName || null,
         avatarUrl: photoURL || null,
-        role: isAdmin ? "ADMIN" : "MEMBER", // Force admin for this email even if it existed as member
         updatedAt: new Date().toISOString(),
       });
     }
