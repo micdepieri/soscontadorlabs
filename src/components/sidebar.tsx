@@ -191,7 +191,7 @@ export default function Sidebar() {
                   key={cat.id}
                   href={`/inicio?categoria=${cat.slug}`}
                   className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    pathname === "/inicio" && cat.slug === new URLSearchParams(typeof window !== "undefined" ? window.location.search : "").get("categoria")
+                    pathname === "/inicio" && cat.slug === searchParams.get("categoria")
                       ? "bg-app-chip text-cloud-white"
                       : "text-cloud-white/50 hover:bg-deep-navy hover:text-cloud-white"
                   }`}
